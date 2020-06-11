@@ -7,10 +7,12 @@ header("Content-Type: text/plain; charset=UTF-8");
 
 putenv("LANG=ja_JP.UTF-8");
 
-if ($_POST['isUntyped'] == 'true') {
-    $cmd = '../programs/InitUntyped "' . $_POST['term'] . '"';
+// isInitを返すようにする．UntypedのときでもEmptyを返すようにする．
+
+if ($_POST['isInit'] == 'true') {
+    $cmd = '../programs/LCII init -u "' . $_POST['ga'] . '" "' . $_POST['term'] . '"';
 } else {
-    $cmd = '../programs/Init "' . $_POST['ga'] . '" "' . $_POST['term'] . '"';
+    $cmd = '../programs/LCII red -u "' . $_POST['ga'] . '" "' . $_POST['term'] . '" "' . $_POST['num'] . '"';
 }
 
 exec($cmd, $opt, $ret);

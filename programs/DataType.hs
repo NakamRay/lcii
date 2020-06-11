@@ -34,6 +34,13 @@ showType (Prod ts)   = "(" ++ showTypes ts ++ ")"
         showTypes (t:[]) = showType t
         showTypes (t:ts) = showType t ++ ", " ++ showTypes ts
 
+showGa :: [Decl] -> IO ()
+showGa []     = putStrLn ""
+showGa (g:[]) = putStrLn $ fst g ++ ":" ++ show (snd g)
+showGa (g:gs) = do 
+    putStr $ fst g ++ ":" ++ show (snd g) ++ ", "
+    showGa gs
+
 showExpr :: Expr -> String
 showExpr (C x tau)   = x ++ ":" ++ show tau
 showExpr (V x)       = x

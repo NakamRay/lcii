@@ -49,15 +49,10 @@ getFV (C x tau)   = []
 getFV (V x)       = [x]
 getFV (A m1 m2)   = getFV m1 ++ getFV m2
 getFV (L x tau m) = filter (/= x) $ getFV m
-getFV (T ts)      = connect $ map getFV ts
+getFV (T ts)      = concat $ map getFV ts
 getFV (P t i)     = getFV t
 
 -- α-conversion
-showA :: [String] -> String
-showA [] = ""
-showA (s:[]) = s
-showA (s:ss) = s ++ ", " ++ showA ss
-
 gA t pos = getAlpha t [] pos (getFV t)
 
 getAlpha :: Expr -> [Int] -> [Int] -> [Id] -> [String]
@@ -69,7 +64,7 @@ getAlpha (A (L x tau t1) t2) cPos rPos bv =
         else getAlpha (L x tau t1) (cPos ++ [1]) rPos bv ++ getAlpha t2 (cPos ++ [2]) rPos bv
 getAlpha (A t1 t2) cPos rPos bv = getAlpha t1 (cPos ++ [1]) rPos bv ++ getAlpha t2 (cPos ++ [2]) rPos bv
 getAlpha (L x tau t) cPos rPos bv = getAlpha t (cPos ++ [1]) rPos (x:bv)
-getAlpha (T ts) cPos rPos bv = connect [ getAlpha (ts !! (i-1)) (cPos ++ [i]) rPos bv | i <- [1..length ts] ]
+getAlpha (T ts) cPos rPos bv = concat [ getAlpha (ts !! (i-1)) (cPos ++ [i]) rPos bv | i <- [1..length ts] ]
 getAlpha (P (T ts) i) cPos rPos bv =
     if cPos == rPos
         then []
@@ -86,7 +81,7 @@ getA (L x tau m) name t bv = if x /= name && notElem x (getFV t)
                                 where
                                     fresh = filter (\x -> notElem x (getFV m ++ getFV t)) bound
                                     new = (filter (\x -> notElem x bv) fresh) !! 0
-getA (T ts)  name t bv = connect (map (\x -> getA x name t bv) ts)
+getA (T ts)  name t bv = concat (map (\x -> getA x name t bv) ts)
 getA (P m i) name t bv = getA m name t bv
 getA m       name t bv = []
 
@@ -97,14 +92,19 @@ bound = ["x","y","z","u","v","w"] ++ map (:[]) ['a'..'t']
 lcii :: IO ()
 lcii = do
     putStrLn ""
-    putStrLn "*************************************************"
-    putStrLn "  LCII: Lambda Calculus Interactive Interpreter"
-    putStrLn "*************************************************"
+    putStrLn "*****************************************************"
+    putStrLn "    LCII: Lambda Calculus Interactive Interpreter    "
+    putStrLn "*****************************************************"
+    putStrLn ""
+    putStrLn ":typed :t     change to using typed lambda calculus"
+    putStrLn ":untyped :u   change to using untyped lambda calculus"
     putStrLn ""
     forM_ (repeat 1) $ \i -> do
-        putStr "Term > "
+        putStrLn "* input typed lambda term *"
+        putStr "LCII > "
         t  <- getLine
-        putStr "Type Environment > "
+        putStrLn "* input type environment *"
+        putStr "LCII > "
         ga <- getLine
         ii (parseEnv ga) (parseExp t)
         putStrLn ""
@@ -117,9 +117,9 @@ ii ga t = do
     then do
         putStrLn "Typing Error"
     else do
-        if rPoss == []
+        if occ == []
         then do
-            printGa ga
+            showGa ga
         else do
             showRedexes t
             putStr "Redex: "
@@ -130,21 +130,21 @@ ii ga t = do
                 ii ga t
             else do
                 let idx = (read num :: Int) - 1
-                if idx > length rPoss - 1
+                if idx > length occ - 1
                 then do
-                    putStrLn $ "The maximum redex number is " ++ show (length rPoss)
+                    putStrLn $ "The maximum redex number is " ++ show (length occ)
                     ii ga t
                 else do
-                    let alpha = gA t (rPoss !! idx)
+                    let alpha = gA t (occ !! idx)
                     if alpha == []
                     then do putStr ""
                     else do
                         putStrLn ""
-                        putStr $ ansi' Reverse $ "α: " ++ showA alpha
+                        putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
                         putStrLn ""
-                    ii ga $ reduction t (rPoss !! idx)
+                    ii ga $ reduction t (occ !! idx)
     where
-        rPoss = getRedexPos t []
+        occ = getRedexPos t []
 
 isNumber' xs = all isDigit xs
 
@@ -152,7 +152,7 @@ iiUntyped :: Expr -> IO ()
 iiUntyped t = do
     putStrLn ""
     printWithColor' t
-    if rPoss == []
+    if occ == []
     then do
         putStr ""
     else do
@@ -165,59 +165,23 @@ iiUntyped t = do
             iiUntyped t
         else do
             let idx = (read num :: Int) - 1
-            if idx > length rPoss - 1
+            if idx > length occ - 1
             then do
-                putStrLn $ "The maximum redex number is " ++ show (length rPoss)
+                putStrLn $ "The maximum redex number is " ++ show (length occ)
                 iiUntyped t
             else do
-                let alpha = gA t (rPoss !! idx)
+                let alpha = gA t (occ !! idx)
                 if alpha == []
                 then do putStr ""
                 else do
                     putStrLn ""
-                    putStr $ ansi' Reverse $ "α: " ++ showA alpha
+                    putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
                     putStrLn ""
-                iiUntyped $ reduction t (rPoss !! idx)
+                iiUntyped $ reduction t (occ !! idx)
     where
-        rPoss = getRedexPos t []
-
--- For web
-showRedexForWeb :: [Decl] -> Expr -> IO ()
-showRedexForWeb ga t = do
-    printWithColor t
-    if hasFailure $ typing ga t
-    then do
-        putStrLn "Typing Error"
-    else do
-        if rPoss == []
-        then do
-            putStrLn "Normal Form"
-        else do
-            showRedexes t
-            putStr "簡約したいRedexの番号を入力してください．"
-    where
-        rPoss = getRedexPos t []
-
-showRedexForWeb' :: Expr -> IO ()
-showRedexForWeb' t = do
-    printWithColor' t
-    if rPoss == []
-    then do
-        putStrLn "Normal Form"
-    else do
-        showRedexes' t
-        putStr "簡約したいRedexの番号を入力してください．"
-    where
-        rPoss = getRedexPos t []
+        occ = getRedexPos t []
 
 -- Show
-printGa :: [Decl] -> IO ()
-printGa []     = putStrLn ""
-printGa (g:[]) = putStrLn $ fst g ++ ":" ++ show (snd g)
-printGa (g:gs) = do 
-    putStr $ fst g ++ ":" ++ show (snd g) ++ ", "
-    printGa gs
-
 showRedexes :: Expr -> IO ()
 showRedexes t = do
     let loop i | i < length redexes = do
@@ -331,7 +295,7 @@ pos (P t i)     = [] : [ 1 : ps | ps <- pos t]
 getExpr :: Expr -> [Int] -> [Int] -> [Expr]
 getExpr (A t1 t2) cPos target = targetPos cPos target (A t1 t2) (getExpr t1 (cPos ++ [1]) target ++ getExpr t2 (cPos ++ [2]) target)
 getExpr (L x tau t) cPos target = targetPos cPos target (L x tau t) (getExpr t (cPos ++ [1]) target)
-getExpr (T ts) cPos target = targetPos cPos target (T ts) (connect $ [ getExpr (ts !! (i-1)) (cPos ++ [i]) target | i <- [1..length ts] ])
+getExpr (T ts) cPos target = targetPos cPos target (T ts) (concat $ [ getExpr (ts !! (i-1)) (cPos ++ [i]) target | i <- [1..length ts] ])
 getExpr (P t i) cPos target = targetPos cPos target (P t i) (getExpr t (cPos ++ [1]) target)
 getExpr t cPos target = targetPos cPos target t []
 
@@ -342,12 +306,10 @@ getRedexPos (A (L x tau t1) t2) cPos =
     cPos : getRedexPos (L x tau t1) (cPos ++ [1]) ++ getRedexPos t2 (cPos ++ [2])
 getRedexPos (A t1 t2) cPos = getRedexPos t1 (cPos ++ [1]) ++ getRedexPos t2 (cPos ++ [2])
 getRedexPos (L x tau t) cPos = getRedexPos t (cPos ++ [1])
-getRedexPos (T ts) cPos = connect $ [ getRedexPos (ts !! (i-1)) (cPos ++ [i]) | i <- [1..length ts] ]
+getRedexPos (T ts) cPos = concat $ [ getRedexPos (ts !! (i-1)) (cPos ++ [i]) | i <- [1..length ts] ]
 getRedexPos (P (T ts) i) cPos = cPos : getRedexPos (T ts) (cPos ++ [1])
 getRedexPos (P t i) cPos = getRedexPos t (cPos ++ [1])
 getRedexPos t cPos = []
-
-connect = foldr (++) []
 
 -- Typing error
 hasFailure :: Type -> Bool

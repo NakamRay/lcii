@@ -1,17 +1,16 @@
 <template>
-  <v-app id="inspire">
+  <v-app dark>
     <!-- App Bar -->
     <v-app-bar
       app
-      clipped-left
+      color="red"
+      dark
       height="50px"
-      color="#282a30"
     >
-      <v-app-bar-nav-icon @click.stop="drawer = !drawer"></v-app-bar-nav-icon>
       <div class="d-flex align-center">
         <v-img
           alt="Vuetify Logo"
-          class="shrink mx-2"
+          class="shrink mr-2"
           contain
           :src="require('./assets/logo.png')"
           transition="scale-transition"
@@ -22,13 +21,11 @@
           alt="Vuetify Name"
           class="shrink mt-1 hidden-sm-and-down"
           contain
+          min-width="300"
           :src="require('./assets/logo_text.png')"
-          height="30"
-          width="85"
+          width="300"
         />
       </div>
-
-      <!-- <v-toolbar-title>LCII</v-toolbar-title> -->
 
       <v-spacer></v-spacer>
 
@@ -41,32 +38,6 @@
     </v-app-bar>
 
     <!-- Drawers -->
-    <v-navigation-drawer
-      v-model="drawer"
-      disable-resize-watcher
-      app
-      clipped
-    >
-      <v-list dense>
-        <v-list-item link>
-          <v-list-item-action>
-            <v-icon>mdi-view-dashboard</v-icon>
-          </v-list-item-action>
-          <v-list-item-content>
-            <v-list-item-title>Dashboard</v-list-item-title>
-          </v-list-item-content>
-        </v-list-item>
-        <v-list-item link>
-          <v-list-item-action>
-            <v-icon>mdi-cog</v-icon>
-          </v-list-item-action>
-          <v-list-item-content>
-            <v-list-item-title>Settings</v-list-item-title>
-          </v-list-item-content>
-        </v-list-item>
-      </v-list>
-    </v-navigation-drawer>
-
     <v-navigation-drawer
       v-model="historyDrawer"
       disable-resize-watcher
@@ -181,96 +152,147 @@
       </v-card>
     </v-dialog>
 
-    <v-content>
-      <v-container
-        class="fill-height pa-0"
-        fluid
-      >
-        <v-row>
-          <v-col cols="12" sm="10" offset-sm="1" class="pa-0">
-            <v-card
-              class="mb-3"
-              style="overflow: auto;"
-              id="env"
-              :class="{'customDark': $vuetify.theme.dark}"
-            >
-              <v-list-item three-line class="pr-2">
-                <v-btn style="position: absolute; right: 70px; top: 10px;" icon @click.stop="editedGa = ga; editDialog = true">
-              <v-icon>mdi-square-edit-outline</v-icon>
-            </v-btn>
-                <v-list-item-content class="py-2">
-                  <div class="overline">TYPING ENVIRONMENT</div>
-                  <v-list-item-title class="text--primary">
-                    <span v-html="ga"></span>
-                  </v-list-item-title>
-                  <v-divider class="my-1"></v-divider>
-                  <div class="overline">TERM</div>
-                  <v-list-item-title class="text--primary">
-                    <span v-html="originalTerm"></span>
-                  </v-list-item-title>
-                </v-list-item-content>
-                <v-list-item-action class="ma-0 mt-5">
-                  <div class="overline">Untyped</div>
-                  <v-switch v-model="untyped" :disabled="flag != 0" class="mt-3 mr-2"></v-switch>
-                </v-list-item-action>
-              </v-list-item>
-            </v-card>
-
-            <v-card
-              :height='consoleHeight'
-              style="overflow: auto;"
-              id="outputConsole"
-              :class="{'customDark': $vuetify.theme.dark}"
-            >
-              <v-card-text>
-                <div v-for="(output,index) in outputs" :key="index">
-                  <p class="text--primary">
-                    <span v-html="output.text"></span>
-                  </p>
-                </div>
-              </v-card-text>
-            </v-card>
-
-            <v-form id="inputForm" @submit.prevent>
-              <v-text-field
-                v-model="input"
-                label="Input"
-                dense
-                solo
-                @keydown.enter="addOutput()"
-                spellcheck="false"
-                class="my-0"
-                :class="{'customDark': $vuetify.theme.dark}"
-              ></v-text-field>
-            </v-form>
-          </v-col>
-
-          <v-col
-            cols="1"
-            class="text-center pl-0 d-none d-sm-flex"
+    <!-- Main -->
+    <v-content :class="{'px-5': $vuetify.breakpoint.xs}">
+      <v-row>
+        <v-col cols="12" sm="10" offset-sm="1" class="pb-0 px-0">
+          <v-card
+            class="mb-3"
+            style="overflow: auto;"
+            id="env"
+            :class="{'customDark': $vuetify.theme.dark}"
           >
-            <v-row class="flex-column ma-0">
-              <v-col class="px-0" style="flex-grow: unset;">
-                <v-btn icon @click="clear">
-                  <v-icon>mdi-delete</v-icon>
-                </v-btn>
-              </v-col>
+            <v-list-item three-line class="pr-2">
+              <v-btn style="position: absolute; right: 70px; top: 10px;" icon @click.stop="editedGa = ga; editDialog = true">
+            <v-icon>mdi-square-edit-outline</v-icon>
+          </v-btn>
+              <v-list-item-content class="py-2">
+                <div class="overline">TYPING ENVIRONMENT</div>
+                <v-list-item-title class="text--primary">
+                  <span v-html="ga"></span>
+                </v-list-item-title>
+                <v-divider class="my-1"></v-divider>
+                <div class="overline">TERM</div>
+                <v-list-item-title class="text--primary">
+                  <span v-html="originalTerm"></span>
+                </v-list-item-title>
+              </v-list-item-content>
+              <v-list-item-action class="ma-0 mt-5">
+                <div class="overline">Untyped</div>
+                <v-switch v-model="untyped" :disabled="flag != 0" class="mt-3 mr-2"></v-switch>
+              </v-list-item-action>
+            </v-list-item>
+          </v-card>
 
-              <v-col class="px-0" style="flex-grow: unset;">
-                <v-btn icon @click.stop="historyDrawer = !historyDrawer; examplesDrawer = false">
-                  <v-icon>mdi-history</v-icon>
-                </v-btn>
-              </v-col>
+          <v-card
+            class="mb-3"
+            :height='consoleHeight'
+            style="overflow: auto;"
+            id="outputConsole"
+            :class="{'customDark': $vuetify.theme.dark}"
+          >
+            <v-card-text>
+              <div v-for="(output,index) in outputs" :key="index">
+                <p class="text--primary">
+                  <span v-html="output.text"></span>
+                </p>
+              </div>
+            </v-card-text>
+          </v-card>
 
-              <v-col class="px-0" style="flex-grow: unset;">
-                <v-btn icon @click.stop="examplesDrawer = !examplesDrawer; historyDrawer = false">
-                  <v-icon>mdi-lambda</v-icon>
-                </v-btn>
-              </v-col>
-            </v-row>
-          </v-col>
-        </v-row>
-      </v-container>
+          <v-form id="inputForm" @submit.prevent>
+            <v-text-field
+              v-model="input"
+              label="Input"
+              @keydown.enter="addOutput()"
+              solo
+              spellcheck="false"
+              :class="{'customDark': $vuetify.theme.dark}"
+            ></v-text-field>
+          </v-form>
+        </v-col>
+
+        <v-col
+          cols="1"
+          class="text-center pl-0 d-none d-sm-flex"
+        >
+          <v-row class="flex-column ma-0">
+            <v-col class="px-0" style="flex-grow: unset;">
+              <v-btn icon @click="clear">
+                <v-icon>mdi-delete</v-icon>
+              </v-btn>
+            </v-col>
+
+            <v-col class="px-0" style="flex-grow: unset;">
+              <v-btn icon @click.stop="historyDrawer = !historyDrawer; examplesDrawer = false">
+                <v-icon>mdi-history</v-icon>
+              </v-btn>
+            </v-col>
+
+            <v-col class="px-0" style="flex-grow: unset;">
+              <v-btn icon @click.stop="examplesDrawer = !examplesDrawer; historyDrawer = false">
+                <v-icon>mdi-lambda</v-icon>
+              </v-btn>
+            </v-col>
+
+            <v-col class="px-0" style="flex-grow: unset;">
+              <v-btn icon @click.stop="$vuetify.theme.dark ? $vuetify.theme.dark = false : $vuetify.theme.dark = true">
+                <v-icon>mdi-theme-light-dark</v-icon>
+              </v-btn>
+            </v-col>
+          </v-row>
+        </v-col>
+      </v-row>
+
+      <!-- Float Button -->
+      <v-speed-dial
+        class="d-flex d-sm-none"
+        v-model="fab"
+        bottom
+        right
+        absolute
+        direction="top"
+        transition="slide-y-reverse-transition"
+      >
+        <template v-slot:activator>
+          <v-btn
+            v-model="fab"
+            color="blue darken-2"
+            dark
+            fab
+          >
+            <v-icon v-if="fab">mdi-close</v-icon>
+            <v-icon v-else>mdi-menu</v-icon>
+          </v-btn>
+        </template>
+        <v-btn
+          fab
+          dark
+          small
+          color="green"
+          @click.stop="examplesDrawer = !examplesDrawer; historyDrawer = false"
+        >
+          <v-icon>mdi-lambda</v-icon>
+        </v-btn>
+        <v-btn
+          fab
+          dark
+          small
+          color="indigo"
+          @click.stop="historyDrawer = !historyDrawer; examplesDrawer = false"
+        >
+          <v-icon>mdi-history</v-icon>
+        </v-btn>
+        <v-btn
+          fab
+          dark
+          small
+          color="red"
+          @click="clear"
+        >
+          <v-icon>mdi-delete</v-icon>
+        </v-btn>
+      </v-speed-dial>
     </v-content>
   </v-app>
 </template>
@@ -286,7 +308,6 @@ export default {
     consoleHeight: 0,
     emptyMessage: 'Empty',
     dialog: false,
-    drawer: null,
     editDialog: false,
     editedGa: '',
     untyped: false,
@@ -323,9 +344,6 @@ export default {
     untypedExamples () {
       return this.$store.state.untypedExamples
     }
-  },
-  created () {
-    this.$vuetify.theme.dark = true
   },
   mounted () {
     this.inputFormHeight = this.$el.querySelector('#inputForm').clientHeight
@@ -473,7 +491,6 @@ export default {
     },
     initInput () {
       this.flag = 0
-      this.outputs.push( { text: '<br>' } )
       this.outputs.push( { text: 'λ式を入力してください．' } )
     },
     clear () {
@@ -507,25 +524,16 @@ export default {
   margin: 0px !important;
 }
 .theme--dark.v-application {
-  background-color: #252525 !important;
+  background-color: black !important;
 }
 .theme--dark.v-divider {
   border-color: #424242 !important;
 }
 .theme--dark.v-text-field--solo > .v-input__control > .v-input__slot {
-  background-color: #1e1e1e !important;
+  background-color: black !important;
 }
 .customDark {
-  background-color: #1e1e1e !important;
+  background-color: black !important;
   border: medium solid #424242;
-}
-p.text--primary {
-  margin-bottom: 3px !important;
-}
-.theme--dark.v-alert {
-    background-color: #424242 !important;
-}
-.theme--dark.v-tabs-items {
-    background-color: #353535 !important;
 }
 </style>

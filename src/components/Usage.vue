@@ -1,6 +1,6 @@
 <template>
   <v-card>
-    <v-toolbar dark color="red" height="50px">
+    <v-toolbar dark color="#a82a30" height="50px">
       <v-toolbar-title>Usage</v-toolbar-title>
       
       <v-spacer></v-spacer>
@@ -10,7 +10,7 @@
       </v-btn>
     </v-toolbar>
     
-    <v-tabs :vertical="$vuetify.breakpoint.smAndUp" color="red">
+    <v-tabs :vertical="$vuetify.breakpoint.smAndUp" color="#efe7e6">
       <v-tab>
         サイト概要
       </v-tab>
@@ -259,7 +259,7 @@ export default {
 };
 </script>
 
-<style>
+<style scoped>
 .v-dialog p {
   text-indent: 1em;
 }
@@ -271,5 +271,8 @@ code {
 }
 .v-card__title {
   padding: 8px 16px 8px !important;
+}
+.theme--dark.v-tabs > .v-tabs-bar {
+    background-color: #333333 !important;
 }
 </style>
