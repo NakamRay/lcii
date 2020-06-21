@@ -15,7 +15,7 @@
           contain
           :src="require('./assets/logo.png')"
           transition="scale-transition"
-          width="35"
+          width="30"
         />
 
         <v-img
@@ -24,7 +24,7 @@
           contain
           :src="require('./assets/logo_text.png')"
           height="30"
-          width="85"
+          width="80"
         />
       </div>
 
@@ -270,6 +270,56 @@
             </v-row>
           </v-col>
         </v-row>
+
+        <!-- Float Button -->
+        <v-speed-dial
+          class="d-flex d-sm-none"
+          v-model="fab"
+          bottom
+          right
+          absolute
+          direction="top"
+          transition="slide-y-reverse-transition"
+        >
+          <template v-slot:activator>
+            <v-btn
+              v-model="fab"
+              color="blue darken-2"
+              dark
+              fab
+            >
+              <v-icon v-if="fab">mdi-close</v-icon>
+              <v-icon v-else>mdi-menu</v-icon>
+            </v-btn>
+          </template>
+          <v-btn
+            fab
+            dark
+            small
+            color="green"
+            @click.stop="examplesDrawer = !examplesDrawer; historyDrawer = false"
+          >
+            <v-icon>mdi-lambda</v-icon>
+          </v-btn>
+          <v-btn
+            fab
+            dark
+            small
+            color="indigo"
+            @click.stop="historyDrawer = !historyDrawer; examplesDrawer = false"
+          >
+            <v-icon>mdi-history</v-icon>
+          </v-btn>
+          <v-btn
+            fab
+            dark
+            small
+            color="red"
+            @click="clear"
+          >
+            <v-icon>mdi-delete</v-icon>
+          </v-btn>
+        </v-speed-dial>
       </v-container>
     </v-content>
   </v-app>
@@ -286,7 +336,7 @@ export default {
     consoleHeight: 0,
     emptyMessage: 'Empty',
     dialog: false,
-    drawer: null,
+    drawer: false,
     editDialog: false,
     editedGa: '',
     untyped: false,
