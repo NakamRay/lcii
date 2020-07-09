@@ -25,15 +25,17 @@ $digit+         { \pos s -> Num (read s) }
 "int"           { \pos _ -> TINT }
 "BOOL"          { \pos _ -> TBOOL }
 "bool"          { \pos _ -> TBOOL }
+"UNIT"          { \pos _ -> TUNIT }
+"unit"          { \pos _ -> TUNIT }
 
 "Empty"         { \pos _ -> Empty }
 
-[\& \λ]         { \pos _ -> TLam }
+[\& \λ \\]         { \pos _ -> TLam }
 [$lower \_ \- \%] [$alpha $digit \_ \^ \' \- \* \+ ! \% \/]* 	{ \pos s -> ID s }
 
 {
 data Token = LPar | RPar | Empty
-     | TINT | TBOOL
+     | TINT | TBOOL | TUNIT
      | TLam | TDot | TCom | TCol | TArrow
      | ID String | Num Int
      deriving (Show,Eq)

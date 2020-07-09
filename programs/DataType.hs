@@ -4,13 +4,15 @@ type Id = String
 type Decl = (Id,Type)
 type Pos = [[Int]]
 
-data Type = INT | BOOL
+data Type = Unit
+          | INT | BOOL
           | Type :=> Type
           | Prod [Type]
           | Failure
           deriving (Eq)
 
-data Expr = C Id Type
+data Expr = U
+          | C Id Type
           | V Id
           | A Expr Expr
           | L Id Type Expr
@@ -24,6 +26,9 @@ instance Show Type where
 instance Show Expr where
     show = showExpr
 
+-- Names of bound variables
+bound = ["x","y","z","u","v","w"] ++ map (:[]) ['a'..'t']
+
 showType :: Type -> String
 showType INT         = "INT"
 showType BOOL        = "BOOL"
@@ -33,6 +38,7 @@ showType (Prod ts)   = "(" ++ showTypes ts ++ ")"
         showTypes []     = " **Error: The Prod type is empty.**"
         showTypes (t:[]) = showType t
         showTypes (t:ts) = showType t ++ ", " ++ showTypes ts
+showType Unit        = "Unit"
 
 showGa :: [Decl] -> IO ()
 showGa []     = putStrLn ""
@@ -60,6 +66,7 @@ showExpr (T ms)      = "(" ++ showExprs (map (\x -> showExpr x) ms) ++ ")"
         showExprs (s:[]) = s
         showExprs (s:ss) = s ++ ", " ++ showExprs ss
 showExpr (P m i)     = showExpr m ++ "." ++ show i
+showExpr U           = "()"
 
 showTerm :: Expr -> String
 showTerm (C x tau)   = x
@@ -80,3 +87,4 @@ showTerm (T ms)      = "(" ++ showExprs (map (\x -> showTerm x) ms) ++ ")"
         showExprs (s:[]) = s
         showExprs (s:ss) = s ++ ", " ++ showExprs ss
 showTerm (P m i)     = showTerm m ++ "." ++ show i
+showTerm U           = "()"

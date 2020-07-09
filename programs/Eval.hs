@@ -11,7 +11,9 @@ import DataType
 import Coloring
 import Parser
 
+----------------------------------
 -- One step reduction
+----------------------------------
 reduction t pos = evel t [] pos (getFV t)
 
 evel :: Expr -> [Int] -> [Int] -> [Id] -> Expr
@@ -43,6 +45,7 @@ assign (L x tau m) name t bv = if x /= name && notElem x (getFV t)
                                    new = (filter (\x -> notElem x bv) fresh) !! 0
 assign (T ts)      name t bv = T $ map (\x -> assign x name t bv) ts
 assign (P m i)     name t bv = P (assign m name t bv) i
+assign e           name t bv = e
 
 getFV :: Expr -> [Id]
 getFV (C x tau)   = []
@@ -51,8 +54,11 @@ getFV (A m1 m2)   = getFV m1 ++ getFV m2
 getFV (L x tau m) = filter (/= x) $ getFV m
 getFV (T ts)      = concat $ map getFV ts
 getFV (P t i)     = getFV t
+getFV t           = []
 
+----------------------------------
 -- α-conversion
+----------------------------------
 gA t pos = getAlpha t [] pos (getFV t)
 
 getAlpha :: Expr -> [Int] -> [Int] -> [Id] -> [String]
@@ -62,14 +68,15 @@ getAlpha (A (L x tau t1) t2) cPos rPos bv =
     if cPos == rPos
         then getA t1 x t2 bv
         else getAlpha (L x tau t1) (cPos ++ [1]) rPos bv ++ getAlpha t2 (cPos ++ [2]) rPos bv
-getAlpha (A t1 t2) cPos rPos bv = getAlpha t1 (cPos ++ [1]) rPos bv ++ getAlpha t2 (cPos ++ [2]) rPos bv
-getAlpha (L x tau t) cPos rPos bv = getAlpha t (cPos ++ [1]) rPos (x:bv)
-getAlpha (T ts) cPos rPos bv = concat [ getAlpha (ts !! (i-1)) (cPos ++ [i]) rPos bv | i <- [1..length ts] ]
+getAlpha (A t1 t2)    cPos rPos bv = getAlpha t1 (cPos ++ [1]) rPos bv ++ getAlpha t2 (cPos ++ [2]) rPos bv
+getAlpha (L x tau t)  cPos rPos bv = getAlpha t (cPos ++ [1]) rPos (x:bv)
+getAlpha (T ts)       cPos rPos bv = concat [ getAlpha (ts !! (i-1)) (cPos ++ [i]) rPos bv | i <- [1..length ts] ]
 getAlpha (P (T ts) i) cPos rPos bv =
     if cPos == rPos
         then []
         else getAlpha (T ts) (cPos ++ [1]) rPos bv
 getAlpha (P t i) cPos rPos bv = getAlpha t (cPos ++ [1]) rPos bv
+getAlpha t       cPos rPos bv = []
 
 getA :: Expr -> String -> Expr -> [Id] -> [String]
 getA (A m1 m2)   name t bv = getA m1 name t bv ++ getA m2 name t bv
@@ -85,10 +92,9 @@ getA (T ts)  name t bv = concat (map (\x -> getA x name t bv) ts)
 getA (P m i) name t bv = getA m name t bv
 getA m       name t bv = []
 
--- Names of bound variables
-bound = ["x","y","z","u","v","w"] ++ map (:[]) ['a'..'t']
-
+----------------------------------
 -- Interactive Intepreter
+----------------------------------
 lcii :: IO ()
 lcii = do
     putStrLn ""
@@ -181,7 +187,9 @@ iiUntyped t = do
     where
         occ = getRedexPos t []
 
+----------------------------------
 -- Show
+----------------------------------
 showRedexes :: Expr -> IO ()
 showRedexes t = do
     let loop i | i < length redexes = do
@@ -212,21 +220,21 @@ printWithColor t = putStrLn $ pRC t (getRedexPos t []) [] []
 printWithColor' :: Expr -> IO ()
 printWithColor' t = putStrLn $ pRC' t (getRedexPos t []) [] []
 
--- coloring :: Maybe Int -> String -> String
--- coloring Nothing s = s
--- coloring (Just 0) s = ansi' Green s
--- coloring (Just 1) s = ansi' Cyan s
--- coloring (Just 2) s = ansi' Blue s
--- coloring (Just 3) s = ansi' Magenta s
--- coloring _ s = s
-
 coloring :: Maybe Int -> String -> String
 coloring Nothing s = s
-coloring (Just 0) s = html' Green s
-coloring (Just 1) s = html' Cyan s
-coloring (Just 2) s = html' Blue s
-coloring (Just 3) s = html' Magenta s
+coloring (Just 0) s = ansi' Green s
+coloring (Just 1) s = ansi' Cyan s
+coloring (Just 2) s = ansi' Blue s
+coloring (Just 3) s = ansi' Magenta s
 coloring _ s = s
+
+-- coloring :: Maybe Int -> String -> String
+-- coloring Nothing s = s
+-- coloring (Just 0) s = html' Green s
+-- coloring (Just 1) s = html' Cyan s
+-- coloring (Just 2) s = html' Blue s
+-- coloring (Just 3) s = html' Magenta s
+-- coloring _ s = s
 
 pRC :: Expr -> Pos -> [Int] -> [Int] -> String
 pRC (C x tau) pos cPos rPos = coloring (elemIndex rPos pos) $ show (C x tau)
@@ -254,6 +262,7 @@ pRC (T ts) pos cPos rPos = coloring (elemIndex rPos pos) "(" ++ pRCT ts pos cPos
         pRCT (t:ts) pos cPos rPos idx = pRC t pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ts pos cPos rPos (idx + 1)
 pRC (P (T ts) i) pos cPos rPos = pRC (T ts) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) "." ++ coloring (elemIndex cPos pos) (show i)
 pRC (P t i) pos cPos rPos = pRC t pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) "." ++ coloring (elemIndex rPos pos) (show i)
+pRC t pos cPos rPos = coloring (elemIndex rPos pos) $ show t
 
 -- for untyped
 pRC' :: Expr -> Pos -> [Int] -> [Int] -> String
@@ -282,8 +291,11 @@ pRC' (T ts) pos cPos rPos = coloring (elemIndex rPos pos) "(" ++ pRCT ts pos cPo
         pRCT (t:ts) pos cPos rPos idx = pRC' t pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ts pos cPos rPos (idx + 1)
 pRC' (P (T ts) i) pos cPos rPos = pRC' (T ts) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) "." ++ coloring (elemIndex cPos pos) (show i)
 pRC' (P t i) pos cPos rPos = pRC' t pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) "." ++ coloring (elemIndex rPos pos) (show i)
+pRC' t pos cPos rPos = coloring (elemIndex rPos pos) $ showTerm t
 
+----------------------------------
 -- Position
+----------------------------------
 pos :: Expr -> Pos
 pos (C x tau)   = [ [] ]
 pos (V x)       = [ [] ]
@@ -291,6 +303,7 @@ pos (A t1 t2)   = [] : [ 1 : ps | ps <- pos t1] ++ [ 2 : ps | ps <- pos t2]
 pos (L x tau t) = [] : [ 1 : ps | ps <- pos t]
 pos (T ts)      = [] : [ i : ps | i <- [1..length ts], ps <- pos (ts !! (i-1))]
 pos (P t i)     = [] : [ 1 : ps | ps <- pos t]
+pos t           = [ [] ]
 
 getExpr :: Expr -> [Int] -> [Int] -> [Expr]
 getExpr (A t1 t2) cPos target = targetPos cPos target (A t1 t2) (getExpr t1 (cPos ++ [1]) target ++ getExpr t2 (cPos ++ [2]) target)
@@ -311,7 +324,9 @@ getRedexPos (P (T ts) i) cPos = cPos : getRedexPos (T ts) (cPos ++ [1])
 getRedexPos (P t i) cPos = getRedexPos t (cPos ++ [1])
 getRedexPos t cPos = []
 
+----------------------------------
 -- Typing error
+----------------------------------
 hasFailure :: Type -> Bool
 hasFailure (tau1 :=> tau2) = hasFailure tau1 || hasFailure tau2
 hasFailure (Prod []) = False
@@ -319,7 +334,9 @@ hasFailure (Prod (tau:taus)) = hasFailure tau || hasFailure (Prod taus)
 hasFailure Failure = True
 hasFailure _ = False
 
+----------------------------------
 -- Tests
+----------------------------------
 test = ii (parseEnv "x:INT, y:INT, z:INT") (parseExp "((λx:INT.λy:INT.(λz:INT.x) y) y) z")
 
 posTest = pos (A (P (T [(V "x"),(C "a" INT),(C "b" BOOL)]) 2) (L "y" INT (A (V "y") (C "a" INT))))

@@ -25,6 +25,7 @@ ID      { ID $$ }
 NUM     { Num $$ }
 INT     { TINT }
 BOOL    { TBOOL }
+UNIT    { TUNIT }
 
 %nonassoc '(' ID
 %nonassoc APP
@@ -37,7 +38,8 @@ Start:  exp		{ $1 }
 exps:   exp             { [$1] }
  |      exp ',' exps    { $1 : $3 }
 
-exp:    '(' exp ')'               { $2 }
+exp:    '(' ')'                   { U }
+ |      '(' exp ')'               { $2 }
  |      ID ':' type               { C $1 $3 }
  |      ID                        { V $1 }
  |      'λ' ID ':' type '.' exp   { L $2 $4 $6 }
@@ -54,6 +56,7 @@ type:   INT             { INT }
  |      BOOL            { BOOL }
  |      type '->' type  { $1 :=> $3 }
  |      '(' types ')'   { Prod $2 }
+ |      UNIT            { Unit }
 
 -- type environment
 

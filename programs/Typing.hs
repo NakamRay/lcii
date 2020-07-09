@@ -1,6 +1,3 @@
--- Typing function for the simply-typed lambda-calculus
--- 2019.7.17 Makoto Hamana
-
 module Typing where
 import DataType
 
@@ -26,6 +23,8 @@ typing ga (P m i) = let tau = typing ga m
                          then (prodTypes tau)!!(i-1)
                          else Failure
 
+typing ga U       = Unit
+
 -- Utility functions
 dom :: [Decl] -> [Id]
 dom ga = map fst ga
@@ -45,10 +44,3 @@ isProdType (Prod taus)      = True
 isProdType tau              = False
 
 prodTypes (Prod taus) = taus
-
--- Typing tests
-
-t1 = typing [("x",INT)] (V "x")
-t2 = typing [] (L "x" INT (A (C "f" (INT :=> BOOL)) (V "x")))
-t3 = typing [("x",INT), ("y",BOOL)] (T [V "x",V "y",C "f" (INT :=> INT)])
-t4 = typing [("x",INT), ("y",BOOL)] (P (T [V "x",V "y",C "f" (INT :=> INT)]) 2)
