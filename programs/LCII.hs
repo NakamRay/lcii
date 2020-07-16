@@ -1,122 +1,137 @@
+module LCII where
+
+import Data.List
+import Data.Char
+
 import Eval
-import Parser
 import Typing
 import DataType
 import Coloring
-
-import Options.Applicative
-import Control.Exception
-import System.Environment (getArgs)
+import Parser
 
 -------------------------------------------------------------------------------
--- Command Line Parsing
--- Ref: https://thoughtbot.com/blog/applicative-options-parsing-in-haskell
---      https://hackage.haskell.org/package/optparse-applicative-0.14.3.0/docs/Options-Applicative.html
+-- Lambda Calculus Interactive Intepreter
 -------------------------------------------------------------------------------
-data Command = Init Bool String String
-             | Reduce Bool String String String
+lcii :: IO ()
+lcii = do
+    putStrLn ""
+    putStrLn "*****************************************************"
+    putStrLn "    LCII: Lambda Calculus Interactive Interpreter    "
+    putStrLn "*****************************************************"
+    putStrLn ""
+    putStrLn ":typed   :t   Use typed lambda calculus"
+    putStrLn ":untyped :u   Use untyped lambda calculus"
+    putStrLn ":quit    :q   Quit LCII"
 
-parseInit :: Parser Command
-parseInit = Init
-    <$> switch ( long "untyped" <> short 'u' <> help "For untyped" )
-    <*> argument str (metavar "ENV")
-    <*> argument str (metavar "TERM")
+    let loop = do
+        putStrLn ""
+        putStrLn "* Input a command *"
+        putStr "LCII > "
+        cmd  <- getLine
+        res <- lciiCmd cmd
+        if res == 0
+        then do loop
+        else do return ()
+    loop
+    
 
-parseReduce :: Parser Command
-parseReduce = Reduce
-    <$> switch ( long "untyped" <> short 'u' <> help "For untyped" )
-    <*> argument str (metavar "ENV")
-    <*> argument str (metavar "TERM")
-    <*> argument str (metavar "INT")
+lciiCmd :: String -> IO Int
+lciiCmd cmd = do
+    if cmd == ":typed" || cmd == ":t" then do
+        putStrLn "* Input typed lambda term *"
+        putStr "LCII > "
+        t  <- getLine
+        putStrLn "* Input type environment *"
+        putStr "LCII > "
+        ga <- getLine
+        if ga == ""
+        then ii [] (parseExp t)
+        else ii (parseEnv ga) (parseExp t)
+        return 0
+    else if cmd == ":untyped" || cmd == ":u" then do
+        putStrLn "* Input untyped lambda term *"
+        putStr "LCII > "
+        t  <- getLine
+        iiUntyped (parseExp t)
+        return 0
+    else if cmd == ":quit" || cmd == ":q" then do
+        putStrLn "* Quit LCII *"
+        return 1
+    else do
+        putStrLn "* Error *"
+        return 0
 
-parseCommand :: Parser Command
-parseCommand = subparser $
-    command "init" (parseInit `withInfo` "Initialize process") <>
-    command "red"  (parseReduce  `withInfo` "One step reduction")
-
-withInfo :: Parser a -> String -> ParserInfo a
-withInfo opts desc = info (helper <*> opts) $ progDesc desc
-
--------------------------------------------------------------------------------
--- One Step Reduction
--------------------------------------------------------------------------------
-showRedexForWeb :: [Decl] -> Expr -> IO ()
-showRedexForWeb ga t = do
+ii :: [Decl] -> Expr -> IO ()
+ii ga t = do
+    putStrLn ""
     printWithColor t
     if hasFailure $ typing ga t
     then do
         putStrLn "Typing Error"
     else do
-        if (getRedexPos t []) == []
+        if occ == []
         then do
-            putStrLn "Normal Form"
+            showGa ga
         else do
             showRedexes t
-            putStr "簡約したいRedexの番号を入力してください．"
+            putStr "Redex: "
+            num <- getLine
+            if not $ isNumber' num
+            then do
+                putStrLn $ "Invalid input"
+                ii ga t
+            else do
+                let idx = (read num :: Int) - 1
+                if idx > length occ - 1
+                then do
+                    putStrLn $ "The maximum redex number is " ++ show (length occ)
+                    ii ga t
+                else do
+                    let alpha = gA t (occ !! idx)
+                    if alpha == []
+                    then do putStr ""
+                    else do
+                        putStrLn ""
+                        putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
+                        putStrLn ""
+                    ii ga $ reduction t (occ !! idx)
+    where
+        occ = getRedexPos t []
 
-
--- Untyped
-showRedexForWeb' :: Expr -> IO ()
-showRedexForWeb' t = do
+iiUntyped :: Expr -> IO ()
+iiUntyped t = do
+    putStrLn ""
     printWithColor' t
-    if getRedexPos t [] == []
+    if occ == []
     then do
-        putStrLn "Normal Form"
+        putStr ""
     else do
         showRedexes' t
-        putStr "簡約したいRedexの番号を入力してください．"
+        putStr "Redex: "
+        num <- getLine
+        if not $ isNumber' num
+        then do
+            putStrLn $ "Invalid input"
+            iiUntyped t
+        else do
+            let idx = (read num :: Int) - 1
+            if idx > length occ - 1
+            then do
+                putStrLn $ "The maximum redex number is " ++ show (length occ)
+                iiUntyped t
+            else do
+                let alpha = gA t (occ !! idx)
+                if alpha == []
+                then do putStr ""
+                else do
+                    putStrLn ""
+                    putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
+                    putStrLn ""
+                iiUntyped $ reduction t (occ !! idx)
+    where
+        occ = getRedexPos t []
 
 -------------------------------------------------------------------------------
--- Main
+-- Utility
 -------------------------------------------------------------------------------
-main :: IO ()
-main = do
-    -- get options
-    cmd <- execParser (info parseCommand mempty)
-    
-    case cmd of
-        Init isUntyped env term ->
-            if isUntyped
-                then do
-                    let t = parseTerm term
-                    catch (showRedexForWeb' t) $ \(SomeException e) -> print "Parse Error"
-                else do
-                    let
-                        ga = parseEnv env
-                        t = parseExp term
-                    catch (showRedexForWeb ga t) $ \(SomeException e) -> print "Parse Error"
-        Reduce isUntyped env term num ->
-            if isUntyped
-                then do
-                    let
-                        t = parseTerm term
-                        occ = getRedexPos t []
-                        idx = (read num :: Int) - 1
-                    if idx > length occ - 1
-                        then do
-                            putStrLn $ "The maximum redex number is " ++ show (length occ)
-                        else do
-                            let alpha = gA t (occ !! idx)
-                            if alpha == []
-                                then do putStr ""
-                                else do
-                                    putStr $ html' Reverse $ "α: " ++ showA alpha
-                                    putStrLn ""
-                            showRedexForWeb' $ reduction t (occ !! idx)
-                else do
-                    let
-                        ga = parseEnv env
-                        t = parseExp term
-                        occ = getRedexPos t []
-                        idx = (read num :: Int) - 1
-                    if idx > length occ - 1
-                        then do
-                            putStrLn $ "The maximum redex number is " ++ show (length occ)
-                        else do
-                            let alpha = gA t (occ !! idx)
-                            if alpha == []
-                                then do putStr ""
-                                else do
-                                    putStr $ html' Reverse $ "α: " ++ showA alpha
-                                    putStrLn ""
-                            showRedexForWeb ga $ reduction t (occ !! idx)
+isNumber' xs = all isDigit xs

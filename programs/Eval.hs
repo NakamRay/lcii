@@ -2,18 +2,15 @@ module Eval where
 
 import Data.List
 import Data.Maybe
-import Data.Char
-
-import Control.Monad
 
 import Typing
 import DataType
 import Coloring
 import Parser
 
-----------------------------------
+-------------------------------------------------------------------------------
 -- One step reduction
-----------------------------------
+-------------------------------------------------------------------------------
 reduction t pos = eval t [] pos (getFV t)
 
 eval :: Expr -> [Int] -> [Int] -> [Id] -> Expr
@@ -66,9 +63,9 @@ getFV (Inj i m tau) = getFV m
 getFV (Case m ms)   = getFV m ++ concat (map getFV ms)
 getFV m             = []
 
-----------------------------------
+-------------------------------------------------------------------------------
 -- α-conversion
-----------------------------------
+-------------------------------------------------------------------------------
 gA t pos = getAlpha t [] pos (getFV t)
 
 getAlpha :: Expr -> [Int] -> [Int] -> [Id] -> [String]
@@ -109,9 +106,9 @@ getA (Inj i m tau) name t bv = getA m name t bv
 getA (Case m ms)   name t bv = getA m name t bv ++ concat (map (\x -> getA x name t bv) ms)
 getA m             name t bv = []
 
-----------------------------------
+-------------------------------------------------------------------------------
 -- Show
-----------------------------------
+-------------------------------------------------------------------------------
 showRedexes :: Expr -> IO ()
 showRedexes t = do
     let loop i | i < length redexes = do
@@ -205,9 +202,9 @@ pRC' (P (T ts) i) pos cPos rPos = pRC' (T ts) pos (cPos ++ [1]) cPos ++ coloring
 pRC' (P t i) pos cPos rPos = pRC' t pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) "." ++ coloring (elemIndex rPos pos) (show i)
 pRC' t pos cPos rPos = coloring (elemIndex rPos pos) $ showTerm t
 
-----------------------------------
+-------------------------------------------------------------------------------
 -- Position
-----------------------------------
+-------------------------------------------------------------------------------
 pos :: Expr -> Pos
 pos (C x tau)     = [ [] ]
 pos (V x)         = [ [] ]
@@ -241,128 +238,3 @@ getRedexPos (Inj i m tau) cPos = getRedexPos m (cPos ++ [1])
 getRedexPos (Case (Inj i m tau) ms) cPos = cPos : getRedexPos (Inj i m tau) (cPos ++ [1]) ++ concat [ getRedexPos (ms !! (i-1)) (cPos ++ [2] ++ [i]) | i <- [1..length ms] ]
 getRedexPos (Case m ms) cPos = getRedexPos m (cPos ++ [1]) ++ concat [ getRedexPos (ms !! (i-1)) (cPos ++ [2] ++ [i]) | i <- [1..length ms] ]
 getRedexPos t cPos = []
-
-----------------------------------
--- Check Typing Error
-----------------------------------
-hasFailure :: Type -> Bool
-hasFailure (tau1 :=> tau2) = hasFailure tau1 || hasFailure tau2
-hasFailure (Prod []) = False
-hasFailure (Prod (tau:taus)) = hasFailure tau || hasFailure (Prod taus)
-hasFailure Failure = True
-hasFailure _ = False
-
-----------------------------------
--- Interactive Intepreter
-----------------------------------
-lcii :: IO ()
-lcii = do
-    putStrLn ""
-    putStrLn "*****************************************************"
-    putStrLn "    LCII: Lambda Calculus Interactive Interpreter    "
-    putStrLn "*****************************************************"
-    putStrLn ""
-    putStrLn ":typed :t     change to using typed lambda calculus"
-    putStrLn ":untyped :u   change to using untyped lambda calculus"
-    putStrLn ""
-    forM_ (repeat 1) $ \i -> do
-        putStrLn "* input typed lambda term *"
-        putStr "LCII > "
-        t  <- getLine
-        putStrLn "* input type environment *"
-        putStr "LCII > "
-        ga <- getLine
-        ii (parseEnv ga) (parseExp t)
-        putStrLn ""
-
-ii :: [Decl] -> Expr -> IO ()
-ii ga t = do
-    putStrLn ""
-    printWithColor t
-    if hasFailure $ typing ga t
-    then do
-        putStrLn "Typing Error"
-    else do
-        if occ == []
-        then do
-            showGa ga
-        else do
-            showRedexes t
-            putStr "Redex: "
-            num <- getLine
-            if not $ isNumber' num
-            then do
-                putStrLn $ "Invalid input"
-                ii ga t
-            else do
-                let idx = (read num :: Int) - 1
-                if idx > length occ - 1
-                then do
-                    putStrLn $ "The maximum redex number is " ++ show (length occ)
-                    ii ga t
-                else do
-                    let alpha = gA t (occ !! idx)
-                    if alpha == []
-                    then do putStr ""
-                    else do
-                        putStrLn ""
-                        putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
-                        putStrLn ""
-                    ii ga $ reduction t (occ !! idx)
-    where
-        occ = getRedexPos t []
-
-isNumber' xs = all isDigit xs
-
-iiUntyped :: Expr -> IO ()
-iiUntyped t = do
-    putStrLn ""
-    printWithColor' t
-    if occ == []
-    then do
-        putStr ""
-    else do
-        showRedexes' t
-        putStr "Redex: "
-        num <- getLine
-        if not $ isNumber' num
-        then do
-            putStrLn $ "Invalid input"
-            iiUntyped t
-        else do
-            let idx = (read num :: Int) - 1
-            if idx > length occ - 1
-            then do
-                putStrLn $ "The maximum redex number is " ++ show (length occ)
-                iiUntyped t
-            else do
-                let alpha = gA t (occ !! idx)
-                if alpha == []
-                then do putStr ""
-                else do
-                    putStrLn ""
-                    putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
-                    putStrLn ""
-                iiUntyped $ reduction t (occ !! idx)
-    where
-        occ = getRedexPos t []
-
-----------------------------------
--- Tests
-----------------------------------
-
--- reduction test
-test1 = ii (parseEnv "x:INT, y:INT, z:INT") (parseExp "((λx:INT.λy:INT.(λz:INT.x) y) y) z")
-test2 = ii [] (Case (Inj 1 (C "i" INT) (Variant [INT, BOOL])) [L "x" INT (V "x"), L "x" BOOL (C "n" INT)])
-test3 = ii [] (
-    Case (
-        A (L "x" (Variant [INT, BOOL]) (V "x")) (Inj 1 (A (L "x" INT (V "x")) (C "i" INT)) (Variant [INT, BOOL]))
-        )
-        [L "x" INT (A (L "y" INT (V "y")) (V "x")),
-         L "x" BOOL (A (L "y" INT (V "y")) (C "n" INT))]
-    )
-
-posTest = pos (A (P (T [(V "x"),(C "a" INT),(C "b" BOOL)]) 2) (L "y" INT (A (V "y") (C "a" INT))))
-
-getRedexPosTest = getRedexPos (A (P (T [(C "a" INT),(A (L "z" BOOL (C "b" BOOL)) (C "c" BOOL))]) 2) (A (L "y" INT (A (V "y") (C "a" INT))) (C "b" BOOL))) []
-
