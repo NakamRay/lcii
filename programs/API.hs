@@ -96,7 +96,7 @@ main = do
                         then do
                             putStrLn $ "The maximum redex number is " ++ show (length occ)
                         else do
-                            let alpha = gA t (occ !! idx)
+                            let alpha = getAlpha t [] (occ !! idx) (getFV t)
                             if alpha == []
                                 then do putStr ""
                                 else do
@@ -113,7 +113,7 @@ main = do
                         then do
                             putStrLn $ "The maximum redex number is " ++ show (length occ)
                         else do
-                            let alpha = gA t (occ !! idx)
+                            let alpha = getAlpha t [] (occ !! idx) (getFV t)
                             if alpha == []
                                 then do putStr ""
                                 else do

@@ -18,9 +18,9 @@ data Expr = U
           | A Expr Expr
           | L Id Type Expr
           | T [Expr]
+          | P Expr Int
           | Inj Int Expr Type -- allow Variant Type only
           | Case Expr [Expr]
-          | P Expr Int
             deriving (Eq)
 
 instance Show Type where
@@ -106,3 +106,10 @@ showTerm (T ms)      = "(" ++ showExprs (map (\x -> showTerm x) ms) ++ ")"
         showExprs (s:[]) = s
         showExprs (s:ss) = s ++ ", " ++ showExprs ss
 showTerm (P m i)     = showTerm m ++ "." ++ show i
+showTerm (Inj i m (Variant taus)) = "(<" ++ show i ++ " = " ++ showTerm m ++ ">:" ++ show (Variant taus) ++ ")"
+showTerm (Inj i m tau) = " **Error: The type in Inj is not a Variant Type.**"
+showTerm (Case m ms)    = "case " ++ showTerm m ++ " of " ++  showExprs (map (\x -> showTerm x) ms)
+    where
+        showExprs []     = " **Error: The list in the Tuple is empty.** "
+        showExprs (s:[]) = s
+        showExprs (s:ss) = s ++ ", " ++ showExprs ss

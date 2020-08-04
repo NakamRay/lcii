@@ -20,23 +20,32 @@ $digit+         { \pos s -> Num (read s) }
 ","             { \pos _ -> TCom }
 ":"             { \pos _ -> TCol }
 "->"            { \pos _ -> TArrow }
+"+"             { \pos _ -> TPlus}
 
 "INT"           { \pos _ -> TINT }
 "int"           { \pos _ -> TINT }
 "BOOL"          { \pos _ -> TBOOL }
 "bool"          { \pos _ -> TBOOL }
+
 "UNIT"          { \pos _ -> TUNIT }
 "unit"          { \pos _ -> TUNIT }
+
+"case"          { \pos _ -> TCase }
+"<"             { \pos _ -> LAngle }
+">"             { \pos _ -> RAngle }
+"="             { \pos _ -> TEqual }
+"of"            { \pos _ -> TOf }
 
 "Empty"         { \pos _ -> Empty }
 
 [\& \λ \\]         { \pos _ -> TLam }
-[$lower \_ \- \%] [$alpha $digit \_ \^ \' \- \* \+ ! \% \/]* 	{ \pos s -> ID s }
+[$lower \_ \- \%] [$alpha $digit \_ \^ \' \- \* ! \% \/]* 	{ \pos s -> ID s }
 
 {
-data Token = LPar | RPar | Empty
+data Token = LPar | RPar | Empty | TPlus
      | TINT | TBOOL | TUNIT
      | TLam | TDot | TCom | TCol | TArrow
+     | TCase | LAngle | RAngle | TEqual | TOf
      | ID String | Num Int
      deriving (Show,Eq)
 

@@ -66,8 +66,6 @@ getFV m             = []
 -------------------------------------------------------------------------------
 -- α-conversion
 -------------------------------------------------------------------------------
-gA t pos = getAlpha t [] pos (getFV t)
-
 getAlpha :: Expr -> [Int] -> [Int] -> [Id] -> [String]
 getAlpha (C x tau) cPos rPos bv = []
 getAlpha (V x)     cPos rPos bv = []
@@ -166,7 +164,12 @@ pRC (T ts)      pos cPos rPos = coloring (elemIndex rPos pos) "(" ++ pRCT ts pos
 pRC (P (T ts) i)  pos cPos rPos = pRC (T ts) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) "." ++ coloring (elemIndex cPos pos) (show i)
 pRC (P t i)       pos cPos rPos = pRC t pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) "." ++ coloring (elemIndex rPos pos) (show i)
 pRC (Inj i m (Variant taus)) pos cPos rPos = coloring (elemIndex rPos pos) ("(<" ++ show i ++ " = ") ++ pRC m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) (">:" ++ show (Variant taus) ++ ")")
-pRC (Case m ms)   pos cPos rPos = coloring (elemIndex rPos pos) "case " ++ pRC m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) " of " ++ pRCT ms pos (cPos ++ [2]) rPos 1
+pRC (Case (Inj i m t) ms) pos cPos rPos = coloring (elemIndex cPos pos) "case " ++ pRC (Inj i m t) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) " of " ++ pRCT ms pos (cPos ++ [2]) cPos 1
+    where
+        pRCT [] pos cPos rPos idx = " **Error: The list in the Tuple is empty.** "
+        pRCT (m:[]) pos cPos rPos idx = pRC m pos (cPos ++ [idx]) rPos
+        pRCT (m:ms) pos cPos rPos idx = pRC m pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ms pos cPos rPos (idx + 1)
+pRC (Case m ms) pos cPos rPos = coloring (elemIndex rPos pos) "case " ++ pRC m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) " of " ++ pRCT ms pos (cPos ++ [2]) rPos 1
     where
         pRCT [] pos cPos rPos idx = " **Error: The list in the Tuple is empty.** "
         pRCT (m:[]) pos cPos rPos idx = pRC m pos (cPos ++ [idx]) rPos
@@ -200,7 +203,18 @@ pRC' (T ts) pos cPos rPos = coloring (elemIndex rPos pos) "(" ++ pRCT ts pos cPo
         pRCT (t:ts) pos cPos rPos idx = pRC' t pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ts pos cPos rPos (idx + 1)
 pRC' (P (T ts) i) pos cPos rPos = pRC' (T ts) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) "." ++ coloring (elemIndex cPos pos) (show i)
 pRC' (P t i) pos cPos rPos = pRC' t pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) "." ++ coloring (elemIndex rPos pos) (show i)
-pRC' t pos cPos rPos = coloring (elemIndex rPos pos) $ showTerm t
+pRC' (Inj i m (Variant taus)) pos cPos rPos = coloring (elemIndex rPos pos) ("(<" ++ show i ++ " = ") ++ pRC' m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) (">:" ++ show (Variant taus) ++ ")")
+pRC' (Case (Inj i m t) ms) pos cPos rPos = coloring (elemIndex cPos pos) "case " ++ pRC' (Inj i m t) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) " of " ++ pRCT ms pos (cPos ++ [2]) cPos 1
+    where
+        pRCT [] pos cPos rPos idx = " **Error: The list in the Tuple is empty.** "
+        pRCT (m:[]) pos cPos rPos idx = pRC' m pos (cPos ++ [idx]) rPos
+        pRCT (m:ms) pos cPos rPos idx = pRC' m pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ms pos cPos rPos (idx + 1)
+pRC' (Case m ms) pos cPos rPos = coloring (elemIndex rPos pos) "case " ++ pRC' m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) " of " ++ pRCT ms pos (cPos ++ [2]) rPos 1
+    where
+        pRCT [] pos cPos rPos idx = " **Error: The list in the Tuple is empty.** "
+        pRCT (m:[]) pos cPos rPos idx = pRC' m pos (cPos ++ [idx]) rPos
+        pRCT (m:ms) pos cPos rPos idx = pRC' m pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ms pos cPos rPos (idx + 1)
+pRC' m             pos cPos rPos = coloring (elemIndex rPos pos) $ showTerm m
 
 -------------------------------------------------------------------------------
 -- Position

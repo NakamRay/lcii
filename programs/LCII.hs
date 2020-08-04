@@ -87,7 +87,7 @@ ii ga t = do
                     putStrLn $ "The maximum redex number is " ++ show (length occ)
                     ii ga t
                 else do
-                    let alpha = gA t (occ !! idx)
+                    let alpha = getAlpha t [] (occ !! idx) (getFV t)
                     if alpha == []
                     then do putStr ""
                     else do
@@ -120,7 +120,7 @@ iiUntyped t = do
                 putStrLn $ "The maximum redex number is " ++ show (length occ)
                 iiUntyped t
             else do
-                let alpha = gA t (occ !! idx)
+                let alpha = getAlpha t [] (occ !! idx) (getFV t)
                 if alpha == []
                 then do putStr ""
                 else do

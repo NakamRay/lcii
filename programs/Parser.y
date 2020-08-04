@@ -19,13 +19,21 @@ import DataType
 'λ'     { TLam }
 ':'     { TCol }
 '->'    { TArrow }
+'+'     { TPlus }
 'Empty' { Empty }
 
 ID      { ID $$ }
 NUM     { Num $$ }
 INT     { TINT }
 BOOL    { TBOOL }
+
 UNIT    { TUNIT }
+
+'case'  { TCase }
+'<'     { LAngle }
+'>'     { RAngle }
+'='     { TEqual }
+'of'    { TOf }
 
 %nonassoc '(' ID
 %nonassoc APP
@@ -38,24 +46,31 @@ Start:  exp		{ $1 }
 exps:   exp             { [$1] }
  |      exp ',' exps    { $1 : $3 }
 
-exp:    '(' ')'                   { U }
- |      '(' exp ')'               { $2 }
- |      ID ':' type               { C $1 $3 }
- |      ID                        { V $1 }
- |      'λ' ID ':' type '.' exp   { L $2 $4 $6 }
- |      '(' exp ',' exps ')'      { T ($2 : $4) }
- |      exp '.' NUM               { P $1 $3 }
- |      exp exp %prec APP         { A $1 $2 }
+inj:    '(' '<' NUM '=' exp '>' ':' type ')'  { Inj $3 $5 $8 }
+
+exp:    '(' ')'                       { U }
+ |      '(' exp ')'                   { $2 }
+ |      ID ':' type                   { C $1 $3 }
+ |      ID                            { V $1 }
+ |      'λ' ID ':' type '.' exp       { L $2 $4 $6 }
+ |      '(' exp ',' exps ')'          { T ($2 : $4) }
+ |      exp '.' NUM                   { P $1 $3 }
+ |      exp exp %prec APP             { A $1 $2 }
+ |      'case' inj 'of' exps          { Case $2 $4 }
 
 -- type
 
-types:  type            { [$1] }
- |      type ',' types  { $1 : $3 }
+prod:   type            { [$1] }
+ |      type ',' prod   { $1 : $3 }
+
+sum:    type            { [$1] }
+ |      type '+' sum    { $1 : $3 }
 
 type:   INT             { INT }
  |      BOOL            { BOOL }
  |      type '->' type  { $1 :=> $3 }
- |      '(' types ')'   { Prod $2 }
+ |      '(' prod ')'    { Prod $2 }
+ |      '(' sum ')'     { Variant $2 }
  |      UNIT            { Unit }
 
 -- type environment

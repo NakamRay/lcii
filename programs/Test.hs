@@ -4,6 +4,7 @@ import LCII
 
 import Eval
 import DataType
+import Typing
 import Parser
 
 -------------------------------------------------------------------------------
@@ -19,6 +20,18 @@ test3 = ii [] (
         )
         [L "x" INT (A (L "y" INT (V "y")) (V "x")),
          L "x" BOOL (A (L "y" INT (V "y")) (C "n" INT))]
+    )
+test4 = ii [] (
+    (A
+        (L "a" INT (
+            Case (
+                A (L "x" (Variant [INT, BOOL]) (V "x")) (Inj 1 (A (L "x" INT (V "x")) (C "i" INT)) (Variant [INT, BOOL]))
+                )
+                [L "x" INT (A (L "y" INT (V "y")) (V "x")),
+                L "x" BOOL (A (L "y" INT (V "y")) (C "n" INT))]
+            ))
+        (C "a" INT)
+        )
     )
 
 -- Typing test
