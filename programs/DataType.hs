@@ -9,6 +9,8 @@ data Type = Unit
           | Type :=> Type
           | Prod [Type]
           | Variant [Type]
+          | Rec [(String, Type)]
+          | Var [(String, Type)]
           | Failure
           deriving (Eq)
 
@@ -19,8 +21,10 @@ data Expr = U
           | L Id Type Expr
           | T [Expr]
           | P Expr Int
-          | Inj Int Expr Type -- allow Variant Type only
-          | Case Expr [Expr]
+          | R [(String, Expr)] -- Record
+          | F Expr String      -- Field
+          | Inj String Expr Type -- allow Variant Type only
+          | Case Expr [(String, Expr)]
             deriving (Eq)
 
 instance Show Type where
@@ -47,6 +51,16 @@ showType (Variant ts) = "(" ++ showTypes ts ++ ")"
         showTypes []     = " **Error: The Variant type is empty.**"
         showTypes (t:[]) = showType t
         showTypes (t:ts) = showType t ++ " + " ++ showTypes ts
+showType (Rec ts) = "{" ++ showTypes ts ++ "}"
+    where
+        showTypes []     = " **Error: The Rec type is empty.**"
+        showTypes ((s, t):[]) = s ++ ":" ++ showType t
+        showTypes ((s, t):ts) = s ++ ":" ++ showType t ++ ", " ++ showTypes ts
+showType (Var ts) = "<" ++ showTypes ts ++ ">"
+    where
+        showTypes []     = " **Error: The Var type is empty.**"
+        showTypes ((s, t):[]) = s ++ ":" ++ showType t
+        showTypes ((s, t):ts) = s ++ ":" ++ showType t ++ ", " ++ showTypes ts
 showType Failure = "Failure"
 
 showGa :: [Decl] -> IO ()
@@ -76,15 +90,21 @@ showExpr (T ms)      = "(" ++ showExprs (map (\x -> showExpr x) ms) ++ ")"
         showExprs (s:[]) = s
         showExprs (s:ss) = s ++ ", " ++ showExprs ss
 showExpr (P m i)     = showExpr m ++ "." ++ show i
-showExpr (Inj i m (Variant taus)) = "(<" ++ show i ++ " = " ++ showExpr m ++ ">:" ++ show (Variant taus) ++ ")"
-showExpr (Inj i m tau) = " **Error: The type in Inj is not a Variant Type.**"
-showExpr (Case m ms)    = "case " ++ showExpr m ++ " of " ++  showExprs (map (\x -> showExpr x) ms)
+showExpr (R ms)      = "{" ++ showExprs (map (\(s,m') -> (s,showExpr m')) ms) ++ "}"
     where
-        showExprs []     = " **Error: The list in the Tuple is empty.** "
-        showExprs (s:[]) = s
-        showExprs (s:ss) = s ++ ", " ++ showExprs ss
+        showExprs []     = " **Error: The list in the Rec is empty.** "
+        showExprs ((s, m):[]) = s ++ " = " ++ m
+        showExprs ((s, m):ss) = s ++ " = " ++ m ++ ", " ++ showExprs ss
+showExpr (F m s)     = showExpr m ++ "." ++ s
+showExpr (Inj s m (Var taus)) = "(<" ++ s ++ " = " ++ showExpr m ++ ">:" ++ show (Var taus) ++ ")"
+showExpr (Inj s m tau) = " **Error: The type in Inj is not a Var Type.**"
+showExpr (Case m ms)    = "case " ++ showExpr m ++ " of " ++ showExprs (map (\(s,m') -> (s,showExpr m')) ms)
+    where
+        showExprs []     = " **Error: The list in the Case is empty.** "
+        showExprs ((s, m):[]) = s ++ " => " ++ m
+        showExprs ((s, m):ss) = s ++ " => " ++ m ++ ", " ++ showExprs ss
 
-injCasetest = putStrLn $ showExpr $ Case (Inj 1 (C "c" INT) (Variant [INT,BOOL])) [L "x" INT (V "x"), L "x" BOOL (C "n" INT)]
+injCasetest = putStrLn $ showExpr $ Case (Inj "Int" (C "c" INT) (Var [("Int", INT),("Bool", BOOL)])) [("Int", L "x" INT (V "x")), ("Bool", L "x" BOOL (C "n" INT))]
 
 showTerm :: Expr -> String
 showTerm U           = "()"
@@ -106,10 +126,3 @@ showTerm (T ms)      = "(" ++ showExprs (map (\x -> showTerm x) ms) ++ ")"
         showExprs (s:[]) = s
         showExprs (s:ss) = s ++ ", " ++ showExprs ss
 showTerm (P m i)     = showTerm m ++ "." ++ show i
-showTerm (Inj i m (Variant taus)) = "(<" ++ show i ++ " = " ++ showTerm m ++ ">:" ++ show (Variant taus) ++ ")"
-showTerm (Inj i m tau) = " **Error: The type in Inj is not a Variant Type.**"
-showTerm (Case m ms)    = "case " ++ showTerm m ++ " of " ++  showExprs (map (\x -> showTerm x) ms)
-    where
-        showExprs []     = " **Error: The list in the Tuple is empty.** "
-        showExprs (s:[]) = s
-        showExprs (s:ss) = s ++ ", " ++ showExprs ss

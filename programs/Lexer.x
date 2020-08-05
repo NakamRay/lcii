@@ -20,6 +20,7 @@ $digit+         { \pos s -> Num (read s) }
 ","             { \pos _ -> TCom }
 ":"             { \pos _ -> TCol }
 "->"            { \pos _ -> TArrow }
+"=>"            { \pos _ -> TLArrow }
 "+"             { \pos _ -> TPlus}
 
 "INT"           { \pos _ -> TINT }
@@ -30,6 +31,9 @@ $digit+         { \pos s -> Num (read s) }
 "UNIT"          { \pos _ -> TUNIT }
 "unit"          { \pos _ -> TUNIT }
 
+"{"             { \pos _ -> LBrace }
+"}"             { \pos _ -> RBrace }
+
 "case"          { \pos _ -> TCase }
 "<"             { \pos _ -> LAngle }
 ">"             { \pos _ -> RAngle }
@@ -38,13 +42,13 @@ $digit+         { \pos s -> Num (read s) }
 
 "Empty"         { \pos _ -> Empty }
 
-[\& \λ \\]         { \pos _ -> TLam }
+[\& \λ \\]      { \pos _ -> TLam }
 [$lower \_ \- \%] [$alpha $digit \_ \^ \' \- \* ! \% \/]* 	{ \pos s -> ID s }
 
 {
 data Token = LPar | RPar | Empty | TPlus
-     | TINT | TBOOL | TUNIT
-     | TLam | TDot | TCom | TCol | TArrow
+     | TINT | TBOOL | TUNIT | LBrace | RBrace
+     | TLam | TDot | TCom | TCol | TArrow | TLArrow
      | TCase | LAngle | RAngle | TEqual | TOf
      | ID String | Num Int
      deriving (Show,Eq)

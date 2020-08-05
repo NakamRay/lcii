@@ -26,15 +26,22 @@ typing ga (P m i) = let tau = typing ga m
                          then (prodTypes tau)!!(i-1)
                          else Failure
 
-typing ga (Inj i m t) = let tau = typing ga m
+typing ga (R ms) = let taus = map (\(s,m) -> (s, typing ga m)) ms
+                     in Rec taus
+
+typing ga (F m s) = let tau = typing ga m
+                        in if isRecType tau
+                           then caseTypeFind (recList tau) s else Failure 
+
+typing ga (Inj s m t) = let tau = typing ga m
                            in case t of
-                              Variant ts -> if tau == ts !! (i-1)
-                                            then Variant ts else Failure
+                              Var taus -> if tau == caseTypeFind taus s
+                                            then Var taus else Failure
                               t' -> Failure
 
 typing ga (Case m ms) = let tau = typing ga m
-                           in if isVariantType tau
-                              then caseType ga ms (variantList tau) (target (typing ga (ms !! 0))) else Failure
+                           in if isVarType tau
+                              then caseType ga ms (varList tau) (target (typing ga (snd (ms !! 0)))) else Failure
 
 -------------------------------------------------------------------------------
 -- Check Typing Error
@@ -68,15 +75,24 @@ isProdType tau              = False
 
 prodTypes (Prod taus) = taus
 
-isVariantType (Variant taus) = True
-isVariantType tau            = False
+isVarType (Var taus) = True
+isVarType tau        = False
 
-variantList (Variant taus) = taus
+isRecType (Rec taus) = True
+isRecType tau        = False
 
-caseType :: [Decl] -> [Expr] -> [Type] -> Type -> Type
+varList (Var taus) = taus
+
+recList (Rec taus) = taus
+
+caseType :: [Decl] -> [(String, Expr)] -> [(String, Type)] -> Type -> Type
 caseType ga [] [] res   = res
 caseType ga [] taus res = Failure
 caseType ga ms [] res   = Failure
-caseType ga (m:ms) (tau:taus) res = if source (typing ga m) == tau && target (typing ga m) == res
+caseType ga ((s, m):ms) ((s',tau):taus) res = if source (typing ga m) == tau && target (typing ga m) == res
                                     then caseType ga ms taus res
                                     else Failure
+
+caseTypeFind :: [(String, Type)] -> String -> Type
+caseTypeFind ((s, t):[]) s' = if s == s' then t else Failure
+caseTypeFind ((s, t):ss) s' = if s == s' then t else caseTypeFind ss s'
