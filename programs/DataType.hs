@@ -8,23 +8,26 @@ data Type = Unit
           | INT | BOOL
           | Type :=> Type
           | Prod [Type]
-          | Variant [Type]
           | Rec [(String, Type)]
           | Var [(String, Type)]
+          | TyVar String
+          | Poly String Type
           | Failure
           deriving (Eq)
 
-data Expr = U
-          | C Id Type
-          | V Id
-          | A Expr Expr
-          | L Id Type Expr
-          | T [Expr]
-          | P Expr Int
+data Expr = U -- Unit
+          | C Id Type -- Const
+          | V Id -- Variable
+          | A Expr Expr -- Application
+          | L Id Type Expr -- Abstraction
+          | T [Expr] -- Tuple
+          | P Expr Int -- Projection
           | R [(String, Expr)] -- Record
           | F Expr String      -- Field
           | Inj String Expr Type -- allow Variant Type only
           | Case Expr [(String, Expr)]
+          | TyL String Expr -- Type Abstraction
+          | TyA Expr Type -- Type Application
             deriving (Eq)
 
 instance Show Type where
@@ -46,11 +49,6 @@ showType (Prod ts)   = "(" ++ showTypes ts ++ ")"
         showTypes []     = " **Error: The Prod type is empty.**"
         showTypes (t:[]) = showType t
         showTypes (t:ts) = showType t ++ ", " ++ showTypes ts
-showType (Variant ts) = "(" ++ showTypes ts ++ ")"
-    where
-        showTypes []     = " **Error: The Variant type is empty.**"
-        showTypes (t:[]) = showType t
-        showTypes (t:ts) = showType t ++ " + " ++ showTypes ts
 showType (Rec ts) = "{" ++ showTypes ts ++ "}"
     where
         showTypes []     = " **Error: The Rec type is empty.**"
@@ -61,6 +59,8 @@ showType (Var ts) = "<" ++ showTypes ts ++ ">"
         showTypes []     = " **Error: The Var type is empty.**"
         showTypes ((s, t):[]) = s ++ ":" ++ showType t
         showTypes ((s, t):ts) = s ++ ":" ++ showType t ++ ", " ++ showTypes ts
+showType (TyVar t) = t
+showType (Poly t tau) = "∀ " ++ t ++ "." ++ showType tau
 showType Failure = "Failure"
 
 showGa :: [Decl] -> IO ()
@@ -78,10 +78,12 @@ showExpr (A m1 m2)   = exprL ++ " " ++ exprR
     where
         exprL = case m1 of
                     L x tau m -> "(" ++ showExpr (L x tau m) ++ ")"
+                    TyL t m -> "(" ++ showExpr (TyL t m) ++ ")"
                     m         -> showExpr m
         exprR = case m2 of
                     A m1 m2   -> "(" ++ showExpr (A m1 m2) ++ ")"
                     L x tau m -> "(" ++ showExpr (L x tau m) ++ ")"
+                    TyL t m -> "(" ++ showExpr (TyL t m) ++ ")"
                     m         -> showExpr m
 showExpr (L x tau m) = "λ" ++ x ++ ":" ++ show tau ++ "." ++ showExpr m
 showExpr (T ms)      = "(" ++ showExprs (map (\x -> showExpr x) ms) ++ ")"
@@ -103,6 +105,18 @@ showExpr (Case m ms)    = "case " ++ showExpr m ++ " of " ++ showExprs (map (\(s
         showExprs []     = " **Error: The list in the Case is empty.** "
         showExprs ((s, m):[]) = s ++ " => " ++ m
         showExprs ((s, m):ss) = s ++ " => " ++ m ++ ", " ++ showExprs ss
+showExpr (TyL t m) = "Λ" ++ t ++ "." ++ showExpr m
+showExpr (TyA m tau) = exprL ++ " " ++ exprR
+    where
+        exprL = case m of
+                    A m1 m2   -> "(" ++ showExpr (A m1 m2) ++ ")"
+                    L x tau m -> "(" ++ showExpr (L x tau m) ++ ")"
+                    TyL t m   -> "(" ++ showExpr (TyL t m) ++ ")"
+                    m         -> showExpr m
+        exprR = case tau of
+                    t1 :=> t2  -> "(" ++ showType (t1 :=> t2) ++ ")"
+                    Poly t tau -> "(" ++ showType (Poly t tau) ++ ")"
+                    tau        -> showType tau
 
 injCasetest = putStrLn $ showExpr $ Case (Inj "Int" (C "c" INT) (Var [("Int", INT),("Bool", BOOL)])) [("Int", L "x" INT (V "x")), ("Bool", L "x" BOOL (C "n" INT))]
 

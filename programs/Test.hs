@@ -16,10 +16,43 @@ test1 = ii (parseEnv "x:INT, y:INT, z:INT") (parseExp "((λx:INT.λy:INT.(λz:IN
 test2 = ii [] (parseExp "case (<fun1=i:INT>:<fun1:INT,fun2:BOOL>) of fun1 => λx:INT.x, fun2 => λx:BOOL.n:INT")
 test3 = ii [] (parseExp "(λa:INT.case ((λx:<fun1:INT,fun2:BOOL>.x) (<fun1=i:INT>:<fun1:INT,fun2:BOOL>)) of fun1 => λx:INT.((λy:INT.y) x), fun2 => λx:BOOL.a) c:INT")
 
-testtt = ii [] (F (R [("num", (C "i" INT)), ("boolean", (C "b" BOOL))]) "boolean")
+ltest = ii [] (F (R [("num", (C "i" INT)), ("boolean", (C "b" BOOL))]) "boolean")
 
--- Typing test
-typingTest1 = typing [] $ Case (Inj 1 (C "i" INT) (Variant [INT, BOOL])) [L "x" INT (V "x"), L "x" BOOL (C "n" INT)]
+ptest = ii [] $
+  TyA
+    (TyL "t"
+      (A
+        (A
+          (L "x" (BOOL :=> INT) (V "x"))
+          (C "f" (TyVar "t" :=> INT))
+        )
+        (A
+          (L "x" (TyVar "t") (V "x"))
+          (C "c" (TyVar "t"))
+        )
+      )
+    )
+    BOOL
+
+ptest2 = ii [] $
+  TyA
+    (A
+      (L "x" (Poly "t" INT) (V "x"))
+      (TyL "t"
+        (A
+          (A
+            (L "x" (BOOL :=> INT) (V "x"))
+            (C "f" (BOOL :=> INT))
+          )
+          (A
+            (L "x" BOOL (V "x"))
+            (C "c" BOOL)
+          )
+        )
+      )
+    )
+    BOOL
+
 
 -- Position test
 posTest = pos (A (P (T [(V "x"),(C "a" INT),(C "b" BOOL)]) 2) (L "y" INT (A (V "y") (C "a" INT))))

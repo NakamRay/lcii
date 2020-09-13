@@ -21,7 +21,8 @@ $digit+         { \pos s -> Num (read s) }
 ":"             { \pos _ -> TCol }
 "->"            { \pos _ -> TArrow }
 "=>"            { \pos _ -> TLArrow }
-"+"             { \pos _ -> TPlus}
+"+"             { \pos _ -> TPlus }
+"∀"            { \pos _ -> TAll }
 
 "INT"           { \pos _ -> TINT }
 "int"           { \pos _ -> TINT }
@@ -42,12 +43,13 @@ $digit+         { \pos s -> Num (read s) }
 
 "Empty"         { \pos _ -> Empty }
 
-[\& \λ \\]      { \pos _ -> TLam }
-[$lower \_ \- \%] [$alpha $digit \_ \^ \' \- \* ! \% \/]* 	{ \pos s -> ID s }
+[\λ \\]         { \pos _ -> TLam }
+[\Λ \&]         { \pos _ -> TLLam }
+[$lower \_ \- \%] [$alpha $digit \_ \^ \' \* ! \% \/]* 	{ \pos s -> ID s }
 
 {
-data Token = LPar | RPar | Empty | TPlus
-     | TINT | TBOOL | TUNIT | LBrace | RBrace
+data Token = LPar | RPar | Empty | TPlus | TLLam
+     | TINT | TBOOL | TUNIT | LBrace | RBrace | TAll
      | TLam | TDot | TCom | TCol | TArrow | TLArrow
      | TCase | LAngle | RAngle | TEqual | TOf
      | ID String | Num Int

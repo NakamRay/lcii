@@ -17,10 +17,12 @@ import DataType
 '.'     { TDot }
 ','     { TCom }
 'λ'     { TLam }
+'Λ'     { TLLam }
 ':'     { TCol }
 '->'    { TArrow }
 '=>'    { TLArrow }
 '+'     { TPlus }
+'∀'    { TAll }
 'Empty' { Empty }
 
 ID      { ID $$ }
@@ -61,6 +63,7 @@ inj:    '(' '<' ID '=' exp '>' ':' type ')'  { Inj $3 $5 $8 }
 exp:    '(' ')'                       { U }
  |      '(' exp ')'                   { $2 }
  |      ID ':' type                   { C $1 $3 }
+ |      ID ':' ID                     { C $1 (TyVar $3) }
  |      ID                            { V $1 }
  |      'λ' ID ':' type '.' exp       { L $2 $4 $6 }
  |      '(' exp ',' exps ')'          { T ($2 : $4) }
@@ -70,6 +73,8 @@ exp:    '(' ')'                       { U }
  |      exp '.' ID                    { F $1 $3 }
  |      inj                           { $1 }
  |      'case' exp 'of' caseExps      { Case $2 $4 }
+ |      'Λ' ID '.' exp                { TyL $2 $4 }
+ |      exp type                      { TyA $1 $2 }
 
 -- type
 
@@ -79,12 +84,14 @@ prod:   type            { [$1] }
 sum:    ID ':' type            { [($1, $3)] }
  |      ID ':' type ',' sum    { ($1, $3) : $5 }
 
-type:   INT             { INT }
- |      BOOL            { BOOL }
- |      type '->' type  { $1 :=> $3 }
- |      '(' prod ')'    { Prod $2 }
- |      '<' sum '>'     { Var $2 }
- |      UNIT            { Unit }
+type:   INT               { INT }
+ |      BOOL              { BOOL }
+ |      ID                { TyVar $1 }
+ |      type '->' type    { $1 :=> $3 }
+ |      '(' prod ')'      { Prod $2 }
+ |      '<' sum '>'       { Var $2 }
+ |      '∀' ID '.' type  { Poly $2 $4 }
+ |      UNIT              { Unit }
 
 -- type environment
 

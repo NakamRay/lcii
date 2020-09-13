@@ -14,19 +14,19 @@ import Parser
 reduction t pos = eval t [] pos (getFV t)
 
 eval :: Expr -> [Int] -> [Int] -> [Id] -> Expr
-eval (A (L x tau t1) t2) cPos rPos bv =
+eval (A (L x tau m1) m2) cPos rPos bv =
     if cPos == rPos
-        then assign t1 x t2 bv
-        else A (eval (L x tau t1) (cPos ++ [1]) rPos bv) (eval t2 (cPos ++ [2]) rPos bv)
-eval (A t1 t2)    cPos rPos bv = A (eval t1 (cPos ++ [1]) rPos bv) (eval t2 (cPos ++ [2]) rPos bv)
-eval (L x tau t)  cPos rPos bv = L x tau $ eval t (cPos ++ [1]) rPos (x:bv)
-eval (T ts)       cPos rPos bv = T $ [ eval (ts !! (i-1)) (cPos ++ [i]) rPos bv | i <- [1..length ts] ]
-eval (P (T ts) i) cPos rPos bv =
+        then assign m1 x m2 bv
+        else A (eval (L x tau m1) (cPos ++ [1]) rPos bv) (eval m2 (cPos ++ [2]) rPos bv)
+eval (A m1 m2)    cPos rPos bv = A (eval m1 (cPos ++ [1]) rPos bv) (eval m2 (cPos ++ [2]) rPos bv)
+eval (L x tau m)  cPos rPos bv = L x tau $ eval m (cPos ++ [1]) rPos (x:bv)
+eval (T ms)       cPos rPos bv = T $ [ eval (ms !! (i-1)) (cPos ++ [i]) rPos bv | i <- [1..length ms] ]
+eval (P (T ms) i) cPos rPos bv =
     if cPos == rPos
-        then ts !! (i-1)
-        else P (eval (T ts) (cPos ++ [1]) rPos bv) i
-eval (P t i)       cPos rPos bv = P (eval t (cPos ++ [1]) rPos bv) i
-eval (R ms)        cPos rPos bv = R [ ((fst (ms !! (i-1))), eval (snd (ms !! (i-1))) (cPos ++ [i]) rPos bv) | i <- [1..length ms] ]
+        then ms !! (i-1)
+        else P (eval (T ms) (cPos ++ [1]) rPos bv) i
+eval (P m i)       cPos rPos bv = P (eval m (cPos ++ [1]) rPos bv) i
+eval (R ms)        cPos rPos bv = R [ (fst (ms !! (i-1)), eval (snd (ms !! (i-1))) (cPos ++ [i]) rPos bv) | i <- [1..length ms] ]
 eval (F (R ms) s)  cPos rPos bv =
     if cPos == rPos
         then caseFind ms s
@@ -37,7 +37,13 @@ eval (Case (Inj s m tau) ms) cPos rPos bv =
     if cPos == rPos
         then A (caseFind ms s) m
         else Case (eval (Inj s m tau) (cPos ++ [1]) rPos bv) [ ((fst (ms !! (i-1))), eval (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) rPos bv) | i <- [1..length ms] ]
-eval (Case m ms) cPos rPos bv = Case (eval m (cPos ++ [1]) rPos bv) [ ((fst (ms !! (i-1))), eval (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) rPos bv) | i <- [1..length ms] ]
+eval (Case m ms) cPos rPos bv = Case (eval m (cPos ++ [1]) rPos bv) [ (fst (ms !! (i-1)), eval (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) rPos bv) | i <- [1..length ms] ]
+eval (TyL t m)   cPos rPos bv = TyL t $ eval m (cPos ++ [1]) rPos bv
+eval (TyA (TyL t m) tau) cPos rPos bv =
+    if cPos == rPos
+        then tySubst m t tau []
+        else TyA (eval (TyL t m) (cPos ++ [1]) rPos bv) tau
+eval (TyA m tau)   cPos rPos bv = TyA (eval m (cPos ++ [1]) rPos bv) tau
 eval t cPos rPos bv = t
 
 caseFind :: [(String, Expr)] -> String -> Expr
@@ -45,24 +51,26 @@ caseFind ((s, m):[]) s' = if s == s' then m else U
 caseFind ((s, m):ss) s' = if s == s' then m else caseFind ss s'
 
 assign :: Expr -> String -> Expr -> [Id] -> Expr
-assign (C x tau)   name t bv = C x tau
-assign (V x)       name t bv = if x == name then t else V x
-assign (A m1 m2)   name t bv = A (assign m1 name t bv) (assign m2 name t bv)
-assign (L x tau m) name t bv = if x /= name && notElem x (getFV t)
-                               then L x tau $ assign m name t (x:bv)
-                               else if x /= name && elem x (getFV t)
-                               then L new tau (assign (assign m x (V new) bv) name t (new:bv))
+assign (C x tau)   name am bv = C x tau
+assign (V x)       name am bv = if x == name then am else V x
+assign (A m1 m2)   name am bv = A (assign m1 name am bv) (assign m2 name am bv)
+assign (L x tau m) name am bv = if x /= name && notElem x (getFV am)
+                               then L x tau $ assign m name am (x:bv)
+                               else if x /= name && elem x (getFV am)
+                               then L new tau (assign (assign m x (V new) bv) name am (new:bv))
                                else L x tau m
                                where
-                                   fresh = filter (\x -> notElem x (getFV m ++ getFV t)) bound
+                                   fresh = filter (\x -> notElem x (getFV m ++ getFV am)) bound
                                    new = (filter (\x -> notElem x bv) fresh) !! 0
-assign (T ms)      name t bv = T $ map (\x -> assign x name t bv) ms
-assign (P m i)     name t bv = P (assign m name t bv) i
-assign (R ms)      name t bv = R (map (\(s,m') -> (s, assign m' name t bv)) ms)
-assign (F m s)     name t bv = F (assign m name t bv) s
-assign (Inj s m tau) name t bv = Inj s (assign m name t bv) tau
-assign (Case m ms) name t bv = Case (assign m name t bv) (map (\(s,m') -> (s, assign m' name t bv)) ms)
-assign e           name t bv = e
+assign (T ms)      name am bv = T $ map (\x -> assign x name am bv) ms
+assign (P m i)     name am bv = P (assign m name am bv) i
+assign (R ms)      name am bv = R (map (\(s,m') -> (s, assign m' name am bv)) ms)
+assign (F m s)     name am bv = F (assign m name am bv) s
+assign (Inj s m tau) name am bv = Inj s (assign m name am bv) tau
+assign (Case m ms) name am bv = Case (assign m name am bv) (map (\(s,m') -> (s, assign m' name am bv)) ms)
+assign (TyL t m)   name am bv = TyL t $ assign m name am bv
+assign (TyA m t)   name am bv = TyA (assign m name am bv) t
+assign e           name am bv = e
 
 getFV :: Expr -> [Id]
 getFV (C x tau)     = []
@@ -75,6 +83,8 @@ getFV (R ms)        = concat (map getFV (map snd ms))
 getFV (F m s)       = getFV m
 getFV (Inj s m tau) = getFV m
 getFV (Case m ms)   = getFV m ++ concat (map getFV (map snd ms))
+getFV (TyL t m)     = getFV m
+getFV (TyA m t)     = getFV m
 getFV m             = []
 
 -------------------------------------------------------------------------------
@@ -164,17 +174,20 @@ pRC (V x)     pos cPos rPos = coloring (elemIndex rPos pos) $ show (V x)
 pRC (A (L x tau t1) t2) pos cPos rPos = coloring (elemIndex cPos pos) "(" ++ pRC (L x tau t1) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ") " ++ exprM2
     where
         exprM2 = case t2 of
-                    A m1 m2   -> coloring (elemIndex cPos pos) "("  ++ pRC (A m1 m2) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
-                    L x tau t -> coloring (elemIndex cPos pos) "("  ++ pRC (L x tau t) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
+                    A m1 m2   -> coloring (elemIndex cPos pos) "(" ++ pRC (A m1 m2) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
+                    L x tau t -> coloring (elemIndex cPos pos) "(" ++ pRC (L x tau t) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
+                    TyL t m   -> coloring (elemIndex cPos pos) "(" ++ pRC (TyL t m) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")"
                     m         -> pRC m pos (cPos ++ [2]) cPos
 pRC (A t1 t2) pos cPos rPos = exprL ++ " " ++ exprR
     where
         exprL = case t1 of
-                    L x tau t -> coloring (elemIndex rPos pos) "("  ++ pRC (L x tau t) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")" 
+                    L x tau t -> coloring (elemIndex rPos pos) "(" ++ pRC (L x tau t) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")" 
+                    TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC (TyL t m) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
                     m         -> pRC m pos (cPos ++ [1]) rPos
         exprR = case t2 of
-                    A m1 m2   -> coloring (elemIndex rPos pos) "("  ++ pRC (A m1 m2) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    L x tau t -> coloring (elemIndex rPos pos) "("  ++ pRC (L x tau t) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    A m1 m2   -> coloring (elemIndex rPos pos) "(" ++ pRC (A m1 m2) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    L x tau t -> coloring (elemIndex rPos pos) "(" ++ pRC (L x tau t) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC (TyL t m) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
                     m         -> pRC m pos (cPos ++ [2]) rPos
 pRC (L x tau t) pos cPos rPos = coloring (elemIndex rPos pos) "λ" ++ coloring (elemIndex rPos pos) x ++ coloring (elemIndex rPos pos) ":" ++ coloring (elemIndex rPos pos) (show tau) ++ coloring (elemIndex rPos pos) "." ++ pRC t pos (cPos ++ [1]) rPos
 pRC (T ts)      pos cPos rPos = coloring (elemIndex rPos pos) "(" ++ pRCT ts pos cPos rPos 1 ++ coloring (elemIndex rPos pos) ")"
@@ -202,6 +215,24 @@ pRC (Case m ms) pos cPos rPos = coloring (elemIndex rPos pos) "case " ++ pRC m p
         pRCT [] pos cPos rPos idx = " **Error: The list in the Case is empty.** "
         pRCT ((s,m):[]) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " => ") ++ pRC m pos (cPos ++ [idx]) rPos
         pRCT ((s,m):ms) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " => ") ++ pRC m pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ms pos cPos rPos (idx + 1)
+pRC (TyL t m) pos cPos rPos = coloring (elemIndex rPos pos) ("Λ" ++ t ++ ".") ++ pRC m pos (cPos ++ [1]) rPos
+pRC (TyA (TyL t m) tau) pos cPos rPos = coloring (elemIndex cPos pos) "(" ++ pRC (TyL t m) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ")" ++ " " ++ exprR
+    where
+        exprR = case tau of
+                    t1 :=> t2  -> coloring (elemIndex cPos pos) $ "(" ++ showType (t1 :=> t2) ++ ")"
+                    Poly t tau -> coloring (elemIndex cPos pos) $ "(" ++ showType (Poly t tau) ++ ")"
+                    tau        -> coloring (elemIndex cPos pos) $ showType tau
+pRC (TyA m tau) pos cPos rPos = exprL ++ " " ++ exprR
+    where
+        exprL = case m of
+                    A m1 m2   -> coloring (elemIndex rPos pos) "(" ++ pRC (A m1 m2) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    L x tau m -> coloring (elemIndex rPos pos) "(" ++ pRC (L x tau m) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC (TyL t m) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    m         -> pRC m pos (cPos ++ [1]) rPos
+        exprR = case tau of
+                    t1 :=> t2  -> coloring (elemIndex rPos pos) $ "(" ++ showType (t1 :=> t2) ++ ")"
+                    Poly t tau -> coloring (elemIndex rPos pos) $ "(" ++ showType (Poly t tau) ++ ")"
+                    tau        -> coloring (elemIndex rPos pos) $ showType tau
 pRC m             pos cPos rPos = coloring (elemIndex rPos pos) $ show m
 
 -- for untyped
@@ -247,6 +278,8 @@ pos (R ms)        = [] : [ i : ps | i <- [1..length ms], ps <- pos (snd (ms !! (
 pos (F m s)       = [] : [ 1 : ps | ps <- pos m]
 pos (Inj s m tau) = [] : [ 1 : ps | ps <- pos m]
 pos (Case m ms)   = [] : [ 1 : ps | ps <- pos m] ++ [ 2 : i : ps | i <- [1..length ms], ps <- pos (snd (ms !! (i-1)))]
+pos (TyL t m)     = [] : [ 1 : ps | ps <- pos m]
+pos (TyA m tau)   = [] : [ 1 : ps | ps <- pos m]
 pos t             = [ [] ]
 
 getExpr :: Expr -> [Int] -> [Int] -> [Expr]
@@ -258,6 +291,8 @@ getExpr (R ms)        cPos target = targetPos cPos target (R ms) (concat [ getEx
 getExpr (F m s)       cPos target = targetPos cPos target (F m s) (getExpr m (cPos ++ [1]) target)
 getExpr (Inj s m tau) cPos target = targetPos cPos target (Inj s m tau) (getExpr m (cPos ++ [1]) target)
 getExpr (Case m ms)   cPos target = targetPos cPos target (Case m ms) (getExpr m (cPos ++ [1]) target ++ concat [ getExpr (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) target | i <- [1..length ms] ])
+getExpr (TyL t m)     cPos target = targetPos cPos target (TyL t m) (getExpr m (cPos ++ [1]) target)
+getExpr (TyA m t)     cPos target = targetPos cPos target (TyA m t) (getExpr m (cPos ++ [1]) target)
 getExpr m             cPos target = targetPos cPos target m []
 
 targetPos cPos target t ts = if cPos == target then [t] else ts
@@ -275,4 +310,7 @@ getRedexPos (F m s)       cPos = getRedexPos m (cPos ++ [1])
 getRedexPos (Inj s m tau) cPos = getRedexPos m (cPos ++ [1])
 getRedexPos (Case (Inj s m tau) ms) cPos = cPos : getRedexPos (Inj s m tau) (cPos ++ [1]) ++ concat [ getRedexPos (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) | i <- [1..length ms] ]
 getRedexPos (Case m ms) cPos = getRedexPos m (cPos ++ [1]) ++ concat [ getRedexPos (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) | i <- [1..length ms] ]
+getRedexPos (TyL t m)   cPos = getRedexPos m (cPos ++ [1])
+getRedexPos (TyA (TyL t m) tau) cPos = cPos : getRedexPos (TyL t m) (cPos ++ [1])
+getRedexPos (TyA m tau) cPos = getRedexPos m (cPos ++ [1])
 getRedexPos m cPos = []
