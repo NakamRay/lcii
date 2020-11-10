@@ -163,21 +163,31 @@
               id="env"
             >
               <v-list-item three-line class="pr-2">
-                <v-list-item-content class="py-2">
-                  <div class="overline">TYPING ENVIRONMENT</div>
-                  <v-list-item-title class="text--primary">
-                    <span v-html="ga"></span>
-                  </v-list-item-title>
+                <v-list-item-content class="pt-0 pb-2">
+                  <v-row>
+                    <v-col cols="6" class="py-0">
+                      <div class="overline">TYPE CONTEXT</div>
+                      <v-list-item-title class="text--primary">
+                        <span v-html="xi"></span>
+                      </v-list-item-title>
+                    </v-col>
+                    <v-col cols="6" class="py-0">
+                      <div class="overline">TERM CONTEXT</div>
+                      <v-list-item-title class="text--primary">
+                        <span v-html="ga"></span>
+                      </v-list-item-title>
 
-                  <v-btn
-                    icon
-                    style="position: absolute; right: 20px; top: 20px;"
-                    @click.stop="editedGa = ga; editDialog = true"
-                  >
-                    <v-icon>mdi-square-edit-outline</v-icon>
-                  </v-btn>
+                      <v-btn
+                        icon
+                        style="position: absolute; right: 20px; top: 20px;"
+                        @click.stop="editedGa = ga; editDialog = true"
+                      >
+                        <v-icon>mdi-square-edit-outline</v-icon>
+                      </v-btn>
+                    </v-col>
+                  </v-row>
 
-                  <v-divider class="my-1"></v-divider>
+                  <v-divider class="mt-1"></v-divider>
 
                   <div class="overline">LAMBDA TERM</div>
                   <v-list-item-title class="text--primary">
@@ -322,7 +332,8 @@ export default {
     initialMessage: ':help :h ヘルプ',
     invalidInputMessage: '無効な入力です．',
     argumentEmptyMessage: '引数を指定してください．（:helpでヘルプ）',
-    baseUrl: 'http://www.sofsci.cs.gunma-u.ac.jp/ii/api/',
+    // baseUrl: 'http://www.sofsci.cs.gunma-u.ac.jp/ii/api/',
+    baseUrl: 'http://localhost/',
     isUntyped: false,
     isRunning: false,
     editDialog: false,
@@ -513,16 +524,19 @@ export default {
     },
     submitTerm () {
       let params = new URLSearchParams()
+          params.append('xi', this.xi)
           params.append('ga', this.ga)
           params.append('term', this.term)
           params.append('isUntyped', this.isUntyped)
+          params.append('isInit', true)
 
       var vm = this
 
-      axios.post(this.baseUrl + 'init.php', params)
+      axios.post(this.baseUrl + 'api.php', params)
         .then(function(response){
           var opt = response.data
-          if (opt.indexOf('Parse Error') != -1) {
+          console.log(opt)
+          if (opt.includes('Parse Error')) {
             vm.outputs.push( { text: '無効な入力です．画面右上の「USAGE」からラムダ式または型環境の記法を参照してください．' } )
             vm.init(true)
             return
@@ -541,14 +555,16 @@ export default {
     },
     submitNum () {
       let params = new URLSearchParams()
+          params.append('xi', this.xi)
           params.append('ga', this.ga)
           params.append('term', this.term)
           params.append('num', this.num)
           params.append('isUntyped', this.isUntyped)
+          params.append('isInit', false)
 
       var vm = this
 
-      axios.post(this.baseUrl + 'iiw.php', params)
+      axios.post(this.baseUrl + 'api.php', params)
         .then(function(response){
           vm.outputs.push( { text: '> ' + vm.num } )
           var opt = response.data
@@ -586,6 +602,7 @@ export default {
       this.originalTerm = example.term
       this.term = example.term
       this.ga = this.emptyToken
+      this.xi = this.emptyToken
       this.examplesDrawer = false
       this.submitTerm()
     },
@@ -608,6 +625,7 @@ export default {
       this.originalTerm = this.emptyToken
       this.term = this.emptyToken
       this.ga = this.emptyToken
+      this.xi = this.emptyToken
       
       if (isNewLine) {
         this.outputs.push( { text: '<br>' }, { text: this.initialMessage } )
@@ -625,10 +643,7 @@ export default {
     }
   },
   created () {
-    this.ga = this.emptyToken
-    this.originalTerm = this.emptyToken
-    this.term = this.emptyToken
-    this.outputs.push({ text: this.initialMessage })
+    this.init()
   },
   mounted () {
     this.inputFormHeight = this.$el.querySelector('#inputForm').clientHeight
