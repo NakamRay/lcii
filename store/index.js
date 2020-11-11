@@ -73,6 +73,18 @@ export const state = () => ({
       desc: 'セットしたラムダ式の対話的な簡約を実行します．-untypedオプションを付けると型無しラムダ式として簡約します．'
     },
     {
+      cmd: '$[Variable Name] = [Lambda Term]',
+      shortCmd: '',
+      options: [],
+      desc: 'ラムダ式を定義します．ラムダ式をセットする際にここで定義した$[Variable Name]が利用できます．'
+    },
+    {
+      cmd: '$[Variable Name]',
+      shortCmd: '',
+      options: [],
+      desc: '定義した$[Variable Name]のラムダ式を表示します．'
+    },
+    {
       cmd: 'show',
       shortCmd: 's',
       options: [],

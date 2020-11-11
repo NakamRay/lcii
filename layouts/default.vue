@@ -7,7 +7,7 @@
     >
       <div class="d-flex align-center">
         <v-img
-          alt="Vuetify Logo"
+          alt="Logo"
           class="shrink mx-2"
           contain
           :src="require('@/assets/logo.png')"
@@ -16,7 +16,7 @@
         />
 
         <v-img
-          alt="Vuetify Name"
+          alt="LCII"
           class="shrink mt-1 hidden-sm-and-down"
           contain
           :src="require('@/assets/logo_text.png')"

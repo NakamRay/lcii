@@ -389,10 +389,9 @@ export default {
       }
 
       // Define
-      match = input.match(/^[A-Z]+\s*=\s*/g)
-
+      match = input.match(/^\$([A-Z]|[a-z])+\s*=\s*/g)
       if (match) {
-        const lhs = input.match(/^[A-Z]+/g)[0]
+        const lhs = input.match(/^\$([A-Z]|[a-z])+/g)[0]
         const rhs = input.replace(match[0], '')
 
         if (!rhs) {
@@ -403,14 +402,28 @@ export default {
         for (let i = 0; i < this.defs.length; i++) {
           if (this.defs[i].binder === lhs) {
             this.defs[i].exp = rhs
-            this.outputs.push( { text: `> ${lhs} = ${rhs}` } )
+            this.outputs.push( { text: `${lhs} = ${rhs}` } )
             return
           }
         }
 
         this.defs.push( { binder: lhs, exp: rhs } )
-        this.outputs.push( { text: `> ${lhs} = ${rhs}` } )
+        this.outputs.push( { text: `${lhs} = ${rhs}` } )
+        console.log(this.defs)
         return
+      }
+
+      // Variable
+      match = input.match(/^\$([A-Z]|[a-z])+$/g)
+      if (match) {
+        if (this.defs.length > 0) {
+          for (let i = 0; i < this.defs.length; i++) {
+            if (this.defs[i].binder === match[0]) {
+              this.outputs.push( { text: `${match[0]} = ${this.defs[i].exp}` } )
+              return
+            }
+          }
+        }
       }
 
       // Submit Number
@@ -453,7 +466,8 @@ export default {
           while (this.isVarExists(newTerm)) {
             console.log(this.defs)
             for (let i = 0; i < this.defs.length; i++) {
-              const regexp = new RegExp(this.defs[i].binder,'g')
+              const binder = `\\${this.defs[i].binder}`
+              const regexp = new RegExp(binder,'g')
               newTerm = newTerm.replace(regexp, this.defs[i].exp)
               console.log(regexp)
             }
@@ -614,7 +628,8 @@ export default {
     isVarExists (input) {
       if (this.defs.length === 0) return false
       for (let i = 0; i < this.defs.length; i++) {
-        const regexp = new RegExp(this.defs[i].binder,'g')
+        const binder = `\\${this.defs[i].binder}`
+        const regexp = new RegExp(binder,'g')
         if (regexp.test(input)) return true
       }
       return false
