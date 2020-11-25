@@ -72,7 +72,7 @@ exp:    '(' ')'                       { U }
  |      ID                            { V $1 }
  |      NUM                           { N $1 }
  |      'λ' ID ':' type '.' exp       { L $2 $4 $6 }
- |      '[' exps ']'                  { T $2 }
+ |      '{' exps '}'                  { T $2 }
  |      exp '.' NUM                   { P $1 $3 }
  |      exp exp %prec APP             { A $1 $2 }
  |      '{' recExps '}'               { R $2 }
@@ -95,7 +95,8 @@ type:   '(' type ')'      { ($2) }
  |      BOOL              { BOOL }
  |      TyID              { TyVar $1 }
  |      type '->' type    { $1 :=> $3 }
- |      '[' prod ']'      { Prod $2 }
+ |      '{' prod '}'      { Prod $2 }
+ |      '{' sum '}'       { Rec $2 }
  |      '<' sum '>'       { Var $2 }
  |      '∀' ID '.' type  { Poly $2 $4 }
  |      UNIT              { Unit }
@@ -124,7 +125,7 @@ term:   '(' term ')'             { $2 }
  |      ID ':' type              { C $1 $3 }
  |      ID                       { V $1 }
  |      'λ' ID '.' term          { L $2 INT $4 }
- |      '(' term ',' terms ')'   { T ($2 : $4) }
+ |      '{' terms '}'            { T $2 }
  |      term '.' NUM             { P $1 $3 }
  |      term term %prec APP      { A $1 $2 }
 

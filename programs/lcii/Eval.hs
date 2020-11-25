@@ -213,7 +213,7 @@ pRC (A t1 t2) pos cPos rPos = exprL ++ " " ++ exprR
                     TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC (TyL t m) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
                     m         -> pRC m pos (cPos ++ [2]) rPos
 pRC (L x tau t) pos cPos rPos = coloring (elemIndex rPos pos) "λ" ++ coloring (elemIndex rPos pos) x ++ coloring (elemIndex rPos pos) ":" ++ coloring (elemIndex rPos pos) (show tau) ++ coloring (elemIndex rPos pos) "." ++ pRC t pos (cPos ++ [1]) rPos
-pRC (T ts)      pos cPos rPos = coloring (elemIndex rPos pos) "(" ++ pRCT ts pos cPos rPos 1 ++ coloring (elemIndex rPos pos) ")"
+pRC (T ts)      pos cPos rPos = coloring (elemIndex rPos pos) "{" ++ pRCT ts pos cPos rPos 1 ++ coloring (elemIndex rPos pos) "}"
     where
         pRCT [] pos cPos rPos idx = " **Error: The term's list in this Tuple is empty.** "
         pRCT (t:[]) pos cPos rPos idx = pRC t pos (cPos ++ [idx]) rPos
@@ -278,7 +278,7 @@ pRC' (A t1 t2) pos cPos rPos = exprL ++ " " ++ exprR
                     L x tau t -> coloring (elemIndex rPos pos) "("  ++ pRC' (L x tau t) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
                     m         -> pRC' m pos (cPos ++ [2]) rPos
 pRC' (L x tau t) pos cPos rPos = coloring (elemIndex rPos pos) "λ" ++ coloring (elemIndex rPos pos) x  ++ coloring (elemIndex rPos pos) "." ++ pRC' t pos (cPos ++ [1]) rPos
-pRC' (T ts) pos cPos rPos = coloring (elemIndex rPos pos) "(" ++ pRCT ts pos cPos rPos 1 ++ coloring (elemIndex rPos pos) ")"
+pRC' (T ts) pos cPos rPos = coloring (elemIndex rPos pos) "{" ++ pRCT ts pos cPos rPos 1 ++ coloring (elemIndex rPos pos) "}"
     where
         pRCT [] pos cPos rPos idx = " **Error: The term's list in this Tuple is empty.** "
         pRCT (t:[]) pos cPos rPos idx = pRC' t pos (cPos ++ [idx]) rPos

@@ -55,7 +55,7 @@ showType (t1 :=> t2) = typeL ++ "->" ++ typeR
         typeR = if isArrowType t1 && isArrowType t2
                 then "(" ++ show t2 ++ ")"
                 else show t2
-showType (Prod ts)   = "[" ++ showTypes ts ++ "]"
+showType (Prod ts)   = "{" ++ showTypes ts ++ "}"
     where
         showTypes []     = " **Error: The Prod type is empty.**"
         showTypes (t:[]) = showType t
@@ -97,7 +97,7 @@ showExpr (A m1 m2)   = exprL ++ " " ++ exprR
                     TyL t m -> "(" ++ showExpr (TyL t m) ++ ")"
                     m         -> showExpr m
 showExpr (L x tau m) = "λ" ++ x ++ ":" ++ show tau ++ "." ++ showExpr m
-showExpr (T ms)      = "[" ++ showExprs (map (\x -> showExpr x) ms) ++ "]"
+showExpr (T ms)      = "{" ++ showExprs (map (\x -> showExpr x) ms) ++ "}"
     where
         showExprs []     = " **Error: The list in the Tuple is empty.** "
         showExprs (s:[]) = s
@@ -129,8 +129,6 @@ showExpr (TyA m tau) = exprL ++ " " ++ exprR
                     Poly t tau -> "(" ++ showType (Poly t tau) ++ ")"
                     tau        -> showType tau
 
-injCasetest = putStrLn $ showExpr $ Case (Inj "Int" (C "c" INT) (Var [("Int", INT),("Bool", BOOL)])) [("Int", L "x" INT (V "x")), ("Bool", L "x" BOOL (C "n" INT))]
-
 showTerm :: Expr -> String
 showTerm U           = "()"
 showTerm (C x tau)   = x
@@ -145,7 +143,7 @@ showTerm (A m1 m2)   = exprL ++ " " ++ exprR
                     L x tau m -> "(" ++ showTerm (L x tau m) ++ ")"
                     m         -> showTerm m
 showTerm (L x tau m) = "λ" ++ x ++ "." ++ showTerm m
-showTerm (T ms)      = "(" ++ showExprs (map (\x -> showTerm x) ms) ++ ")"
+showTerm (T ms)      = "{" ++ showExprs (map (\x -> showTerm x) ms) ++ "}"
     where
         showExprs []     = " **Error: The term's list in this Tuple is empty.** "
         showExprs (s:[]) = s
