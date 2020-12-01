@@ -13,7 +13,21 @@ data Type = Unit
           | TyVar String
           | Poly String Type
           | Failure
+          | Pair (Type, Type)
+          | Sum (Type, Type)
+          | Zero
+          | Thunk Comp
           deriving (Eq)
+
+data Effect = Op Type Type Effect
+            | Empty
+
+data Comp = F Type
+          | Type :-> Comp
+          | Top
+          | Comp :& Comp
+
+data Handler = Handler Type Effect Effect Comp
 
 data Expr = U -- Unit
           | C Id Type -- Const
@@ -24,12 +38,30 @@ data Expr = U -- Unit
           | P Expr Int -- Projection
           | R [(String, Expr)] -- Record
           | F Expr String      -- Field
-          | Inj String Expr Type -- allow Variant Type only
+          | Inj String Expr Type -- Injection for Case
           | Case Expr [(String, Expr)]
           | TyL String Expr -- Type Abstraction
           | TyA Expr Type -- Type Application
           | N Int -- numbers to lambda term
+          | Pa (Expr, Expr)
+          | In Int Expr
+          | Th TermComp
             deriving (Eq)
+
+data TermComp = Split Expr String String TermComp
+              | CaseZero Expr
+              | Ca Expr String TermComp String TermComp
+              | Sus Expr -- V!
+              | Return Expr
+              | Let String TermComp TermComp
+              | Abs String
+              | TermComp :@ Expr
+              | Prj Int TermComp
+              | TermOp Expr String TermComp
+              | Handle TermComp TermHandler
+
+data TermHandler = Ret String TermComp
+                 | HandlerOp TermHandler TermComp 
 
 instance Show Type where
     show = showType

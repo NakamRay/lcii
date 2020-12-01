@@ -55,6 +55,27 @@ typing' xi ga (TyA m sig) = let tau = typing' xi ga m
                                 then tyAssign (polyTau tau) (polyTV tau) sig xi
                                 else Failure
 
+typing' xi ga (Pa (m1 m2)) = let tau1 = typing' xi ga m1
+                                 tau2 = typing' xi ga m2
+                              in Pair (tau1, tau2)
+
+-- typing' xi ga (In i m) = 
+
+typing' xi ga (Th comp) = let ctype = ctyping comp
+                           in Thunk ctype
+
+ctyping xi ga (Split v x1 x2 m) = let tau = typing' xi ga v
+                                      ctype = ctyping xi ((x1,prodLeft tau):(x2,prodRight tau):ga) m
+                                   in ctype
+
+ctyping xi ga 
+
+prodLeft (Pair l r) = l
+prodLeft _ = Failure
+
+prodRight (Pair l r) = r
+prodRight _ = Failure
+
 typeTyping :: [String] -> Type -> Bool
 typeTyping xi (tau1 :=> tau2) = (typeTyping xi tau1) && (typeTyping xi tau2)
 typeTyping xi (Prod taus)     = and $ map (typeTyping xi) taus
