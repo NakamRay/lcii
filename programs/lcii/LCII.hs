@@ -63,8 +63,9 @@ lciiCmd cmd = do
 
 ii :: [String] -> [Decl] -> Expr -> IO ()
 ii xi ga t = do
+    let occ = getRedexPos t []
     putStrLn ""
-    printWithColor t
+    printWithColor False t
     if hasFailure $ typing xi ga t
     then do
         putStrLn "Typing Error"
@@ -73,7 +74,7 @@ ii xi ga t = do
         then do
             showGa ga
         else do
-            showRedexes t
+            showRedexes False t
             putStr "Redex: "
             num <- getLine
             if not $ isNumber' num
@@ -95,18 +96,18 @@ ii xi ga t = do
                         putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
                         putStrLn ""
                     ii xi ga $ reduction t (occ !! idx)
-    where
-        occ = getRedexPos t []
 
 iiUntyped :: Expr -> IO ()
-iiUntyped t = do
+iiUntyped term = do
+    let t = n2l term
+    let occ = getRedexPos t []
     putStrLn ""
-    printWithColor' t
+    printWithColor True t
     if occ == []
     then do
         putStr ""
     else do
-        showRedexes' t
+        showRedexes True t
         putStr "Redex: "
         num <- getLine
         if not $ isNumber' num
@@ -128,8 +129,6 @@ iiUntyped t = do
                     putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
                     putStrLn ""
                 iiUntyped $ reduction t (occ !! idx)
-    where
-        occ = getRedexPos t []
 
 -------------------------------------------------------------------------------
 -- Utility

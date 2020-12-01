@@ -17,6 +17,13 @@ typingTest xi ga t = do
   putStrLn $ "Exp: " ++ t
   putStrLn $ "τ  : " ++ show (typing (parseTypeContext xi) (parseEnv ga) (parseExp t))
 
+utest1 = iiUntyped (parseTerm "((λx.λy.(λz.x) y) y) z")
+utest2 = iiUntyped (parseTerm "case (<fun1=y>) of fun1 => λx.x, fun2 => λx.z")
+utest3 = iiUntyped (parseTerm "{num=i, boolean=b}.boolean")
+utest4 = iiUntyped (parseTerm "{x, y, z}.2")
+utest5 = iiUntyped (parseTerm "case (<fun1=y>) of fun1 => λx.x, fun2 => {num=i, boolean=b}.boolean")
+utest6 = iiUntyped $ parseTerm "case (<plus=2>) of plus => λx.x + 1"
+
 -- reduction test
 test1 = ii [] (parseEnv "x:INT, y:INT, z:INT") (parseExp "((λx:INT.λy:INT.(λz:INT.x) y) y) z")
 test2 = ii [] [] (parseExp "case (<fun1=i:INT>:<fun1:INT,fun2:BOOL>) of fun1 => λx:INT.x, fun2 => λx:BOOL.n:INT")

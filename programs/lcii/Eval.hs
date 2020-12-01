@@ -161,22 +161,10 @@ succ = parseExp "λn:UNIT.λf:UNIT.λx:UNIT.f (n f x)"
 -------------------------------------------------------------------------------
 -- Show
 -------------------------------------------------------------------------------
-showRedexes :: Expr -> IO ()
-showRedexes t = do
+showRedexes :: Bool -> Expr -> IO ()
+showRedexes isU t = do
     let loop i | i < length redexes = do
-            putStrLn $ coloring (Just i) $ show (i + 1) ++ ". " ++ show (redexes !! i)
-            loop $ i + 1
-        loop _ = return ()
-    loop 0
-    where
-        pos = getRedexPos t []
-        redexes = map (\x -> (getExpr t [] x) !! 0) pos
-
--- for Untyped
-showRedexes' :: Expr -> IO ()
-showRedexes' t = do
-    let loop i | i < length redexes = do
-            putStrLn $ coloring (Just i) $ show (i + 1) ++ ". " ++ showTerm (redexes !! i)
+            putStrLn $ coloring (Just i) $ show (i + 1) ++ ". " ++ pRCshow isU (redexes !! i)
             loop $ i + 1
         loop _ = return ()
     loop 0
@@ -185,107 +173,78 @@ showRedexes' t = do
         redexes = map (\x -> (getExpr t [] x) !! 0) pos
 
 -- print redex with color
-printWithColor :: Expr -> IO ()
-printWithColor t = putStrLn $ pRC t (getRedexPos t []) [] []
+printWithColor :: Bool -> Expr -> IO ()
+printWithColor isU t = putStrLn $ pRC isU t (getRedexPos t []) [] []
 
-printWithColor' :: Expr -> IO ()
-printWithColor' t = putStrLn $ pRC' t (getRedexPos t []) [] []
-
-pRC :: Expr -> Pos -> [Int] -> [Int] -> String
-pRC (C x tau) pos cPos rPos = coloring (elemIndex rPos pos) $ show (C x tau)
-pRC (V x)     pos cPos rPos = coloring (elemIndex rPos pos) $ show (V x)
-pRC (A (L x tau t1) t2) pos cPos rPos = coloring (elemIndex cPos pos) "(" ++ pRC (L x tau t1) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ") " ++ exprM2
+pRC :: Bool -> Expr -> Pos -> [Int] -> [Int] -> String
+pRC isU (C x tau) pos cPos rPos = coloring (elemIndex rPos pos) $ pRCshow isU (C x tau)
+pRC isU (V x)     pos cPos rPos = coloring (elemIndex rPos pos) $ pRCshow isU (V x)
+pRC isU (A (L x tau t1) t2) pos cPos rPos = coloring (elemIndex cPos pos) "(" ++ pRC isU (L x tau t1) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ") " ++ exprM2
     where
         exprM2 = case t2 of
-                    A m1 m2   -> coloring (elemIndex cPos pos) "(" ++ pRC (A m1 m2) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
-                    L x tau t -> coloring (elemIndex cPos pos) "(" ++ pRC (L x tau t) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
-                    TyL t m   -> coloring (elemIndex cPos pos) "(" ++ pRC (TyL t m) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")"
-                    m         -> pRC m pos (cPos ++ [2]) cPos
-pRC (A t1 t2) pos cPos rPos = exprL ++ " " ++ exprR
+                    A m1 m2   -> coloring (elemIndex cPos pos) "(" ++ pRC isU (A m1 m2) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
+                    L x tau t -> coloring (elemIndex cPos pos) "(" ++ pRC isU (L x tau t) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
+                    TyL t m   -> coloring (elemIndex cPos pos) "(" ++ pRC isU (TyL t m) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")"
+                    m         -> pRC isU m pos (cPos ++ [2]) cPos
+pRC isU (A t1 t2) pos cPos rPos = exprL ++ " " ++ exprR
     where
         exprL = case t1 of
-                    L x tau t -> coloring (elemIndex rPos pos) "(" ++ pRC (L x tau t) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")" 
-                    TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC (TyL t m) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    m         -> pRC m pos (cPos ++ [1]) rPos
+                    L x tau t -> coloring (elemIndex rPos pos) "(" ++ pRC isU (L x tau t) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")" 
+                    TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (TyL t m) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    m         -> pRC isU m pos (cPos ++ [1]) rPos
         exprR = case t2 of
-                    A m1 m2   -> coloring (elemIndex rPos pos) "(" ++ pRC (A m1 m2) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    L x tau t -> coloring (elemIndex rPos pos) "(" ++ pRC (L x tau t) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC (TyL t m) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    m         -> pRC m pos (cPos ++ [2]) rPos
-pRC (L x tau t) pos cPos rPos = coloring (elemIndex rPos pos) "λ" ++ coloring (elemIndex rPos pos) x ++ coloring (elemIndex rPos pos) ":" ++ coloring (elemIndex rPos pos) (show tau) ++ coloring (elemIndex rPos pos) "." ++ pRC t pos (cPos ++ [1]) rPos
-pRC (T ts)      pos cPos rPos = coloring (elemIndex rPos pos) "{" ++ pRCT ts pos cPos rPos 1 ++ coloring (elemIndex rPos pos) "}"
+                    A m1 m2   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (A m1 m2) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    L x tau t -> coloring (elemIndex rPos pos) "(" ++ pRC isU (L x tau t) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (TyL t m) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    m         -> pRC isU m pos (cPos ++ [2]) rPos
+pRC isU (L x tau t) pos cPos rPos = coloring (elemIndex rPos pos) "λ" ++ coloring (elemIndex rPos pos) x ++ (if isU then "" else coloring (elemIndex rPos pos) ":" ++ coloring (elemIndex rPos pos) (show tau)) ++ coloring (elemIndex rPos pos) "." ++ pRC isU t pos (cPos ++ [1]) rPos
+pRC isU (T ts)      pos cPos rPos = coloring (elemIndex rPos pos) "{" ++ pRCT ts pos cPos rPos 1 ++ coloring (elemIndex rPos pos) "}"
     where
         pRCT [] pos cPos rPos idx = " **Error: The term's list in this Tuple is empty.** "
-        pRCT (t:[]) pos cPos rPos idx = pRC t pos (cPos ++ [idx]) rPos
-        pRCT (t:ts) pos cPos rPos idx = pRC t pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ts pos cPos rPos (idx + 1)
-pRC (P (T ts) i)  pos cPos rPos = pRC (T ts) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ("." ++ show i)
-pRC (P m i)       pos cPos rPos = pRC m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) "." ++ coloring (elemIndex rPos pos) (show i)
-pRC (R ms)        pos cPos rPos = coloring (elemIndex rPos pos) "{" ++ pRCT ms pos cPos rPos 1 ++ coloring (elemIndex rPos pos) "}"
+        pRCT (t:[]) pos cPos rPos idx = pRC isU t pos (cPos ++ [idx]) rPos
+        pRCT (t:ts) pos cPos rPos idx = pRC isU t pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ts pos cPos rPos (idx + 1)
+pRC isU (P (T ts) i)  pos cPos rPos = pRC isU (T ts) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ("." ++ show i)
+pRC isU (P m i)       pos cPos rPos = pRC isU m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) "." ++ coloring (elemIndex rPos pos) (show i)
+pRC isU (R ms)        pos cPos rPos = coloring (elemIndex rPos pos) "{" ++ pRCT ms pos cPos rPos 1 ++ coloring (elemIndex rPos pos) "}"
     where
         pRCT [] pos cPos rPos idx = " **Error: The list in the Rec is empty.** "
-        pRCT ((s,m):[]) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " = ") ++ pRC m pos (cPos ++ [idx]) rPos
-        pRCT ((s,m):ms) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " = ") ++ pRC m pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ms pos cPos rPos (idx + 1)
-pRC (F (R ms) s)  pos cPos rPos = pRC (R ms) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ("." ++ s)
-pRC (F m s)       pos cPos rPos = pRC m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) "." ++ coloring (elemIndex rPos pos) s
-pRC (Inj s m (Var taus)) pos cPos rPos = coloring (elemIndex rPos pos) ("(<" ++ s ++ " = ") ++ pRC m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) (">:" ++ show (Var taus) ++ ")")
-pRC (Case (Inj s m t) ms) pos cPos rPos = coloring (elemIndex cPos pos) "case " ++ pRC (Inj s m t) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) " of " ++ pRCT ms pos (cPos ++ [2]) cPos 1
+        pRCT ((s,m):[]) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " = ") ++ pRC isU m pos (cPos ++ [idx]) rPos
+        pRCT ((s,m):ms) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " = ") ++ pRC isU m pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ms pos cPos rPos (idx + 1)
+pRC isU (F (R ms) s)  pos cPos rPos = pRC isU (R ms) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ("." ++ s)
+pRC isU (F m s)       pos cPos rPos = pRC isU m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) "." ++ coloring (elemIndex rPos pos) s
+pRC isU (Inj s m (Var taus)) pos cPos rPos = coloring (elemIndex rPos pos) ("(<" ++ s ++ " = ") ++ pRC isU m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) (">:" ++ show (Var taus) ++ ")")
+pRC isU (Case (Inj s m t) ms) pos cPos rPos = coloring (elemIndex cPos pos) "case " ++ pRC isU (Inj s m t) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) " of " ++ pRCT ms pos (cPos ++ [2]) cPos 1
     where
         pRCT [] pos cPos rPos idx = " **Error: The list in the Case is empty.** "
-        pRCT ((s,m):[]) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " => ") ++ pRC m pos (cPos ++ [idx]) rPos
-        pRCT ((s,m):ms) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " => ")++ pRC m pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ms pos cPos rPos (idx + 1)
-pRC (Case m ms) pos cPos rPos = coloring (elemIndex rPos pos) "case " ++ pRC m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) " of " ++ pRCT ms pos (cPos ++ [2]) rPos 1
+        pRCT ((s,m):[]) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " => ") ++ pRC isU m pos (cPos ++ [idx]) rPos
+        pRCT ((s,m):ms) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " => ")++ pRC isU m pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ms pos cPos rPos (idx + 1)
+pRC isU (Case m ms) pos cPos rPos = coloring (elemIndex rPos pos) "case " ++ pRC isU m pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) " of " ++ pRCT ms pos (cPos ++ [2]) rPos 1
     where
         pRCT [] pos cPos rPos idx = " **Error: The list in the Case is empty.** "
-        pRCT ((s,m):[]) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " => ") ++ pRC m pos (cPos ++ [idx]) rPos
-        pRCT ((s,m):ms) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " => ") ++ pRC m pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ms pos cPos rPos (idx + 1)
-pRC (TyL t m) pos cPos rPos = coloring (elemIndex rPos pos) ("Λ" ++ t ++ ".") ++ pRC m pos (cPos ++ [1]) rPos
-pRC (TyA (TyL t m) tau) pos cPos rPos = coloring (elemIndex cPos pos) "(" ++ pRC (TyL t m) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ")" ++ " " ++ exprR
+        pRCT ((s,m):[]) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " => ") ++ pRC isU m pos (cPos ++ [idx]) rPos
+        pRCT ((s,m):ms) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " => ") ++ pRC isU m pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ms pos cPos rPos (idx + 1)
+pRC isU (TyL t m) pos cPos rPos = coloring (elemIndex rPos pos) ("Λ" ++ t ++ ".") ++ pRC isU m pos (cPos ++ [1]) rPos
+pRC isU (TyA (TyL t m) tau) pos cPos rPos = coloring (elemIndex cPos pos) "(" ++ pRC isU (TyL t m) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ")" ++ " " ++ exprR
     where
         exprR = case tau of
                     t1 :=> t2  -> coloring (elemIndex cPos pos) $ "(" ++ showType (t1 :=> t2) ++ ")"
                     Poly t tau -> coloring (elemIndex cPos pos) $ "(" ++ showType (Poly t tau) ++ ")"
                     tau        -> coloring (elemIndex cPos pos) $ showType tau
-pRC (TyA m tau) pos cPos rPos = exprL ++ " " ++ exprR
+pRC isU (TyA m tau) pos cPos rPos = exprL ++ " " ++ exprR
     where
         exprL = case m of
-                    A m1 m2   -> coloring (elemIndex rPos pos) "(" ++ pRC (A m1 m2) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    L x tau m -> coloring (elemIndex rPos pos) "(" ++ pRC (L x tau m) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC (TyL t m) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    m         -> pRC m pos (cPos ++ [1]) rPos
+                    A m1 m2   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (A m1 m2) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    L x tau m -> coloring (elemIndex rPos pos) "(" ++ pRC isU (L x tau m) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (TyL t m) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    m         -> pRC isU m pos (cPos ++ [1]) rPos
         exprR = case tau of
                     t1 :=> t2  -> coloring (elemIndex rPos pos) $ "(" ++ showType (t1 :=> t2) ++ ")"
                     Poly t tau -> coloring (elemIndex rPos pos) $ "(" ++ showType (Poly t tau) ++ ")"
                     tau        -> coloring (elemIndex rPos pos) $ showType tau
-pRC m             pos cPos rPos = coloring (elemIndex rPos pos) $ show m
+pRC isU m pos cPos rPos = coloring (elemIndex rPos pos) $ pRCshow isU m
 
--- for untyped
-pRC' :: Expr -> Pos -> [Int] -> [Int] -> String
-pRC' (C x tau) pos cPos rPos = coloring (elemIndex rPos pos) $ showTerm (C x tau)
-pRC' (V x) pos cPos rPos = coloring (elemIndex rPos pos) $ showTerm (V x)
-pRC' (A (L x tau t1) t2) pos cPos rPos = coloring (elemIndex cPos pos) "(" ++ pRC' (L x tau t1) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ") " ++ exprM2
-    where
-        exprM2 = case t2 of
-                    A m1 m2   -> coloring (elemIndex cPos pos) "("  ++ pRC' (A m1 m2) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
-                    L x tau t -> coloring (elemIndex cPos pos) "("  ++ pRC' (L x tau t) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
-                    m         -> pRC' m pos (cPos ++ [2]) cPos
-pRC' (A t1 t2) pos cPos rPos = exprL ++ " " ++ exprR
-    where
-        exprL = case t1 of
-                    L x tau t -> coloring (elemIndex rPos pos) "("  ++ pRC' (L x tau t) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")" 
-                    m         -> pRC' m pos (cPos ++ [1]) rPos
-        exprR = case t2 of
-                    A m1 m2   -> coloring (elemIndex rPos pos) "("  ++ pRC' (A m1 m2) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    L x tau t -> coloring (elemIndex rPos pos) "("  ++ pRC' (L x tau t) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    m         -> pRC' m pos (cPos ++ [2]) rPos
-pRC' (L x tau t) pos cPos rPos = coloring (elemIndex rPos pos) "λ" ++ coloring (elemIndex rPos pos) x  ++ coloring (elemIndex rPos pos) "." ++ pRC' t pos (cPos ++ [1]) rPos
-pRC' (T ts) pos cPos rPos = coloring (elemIndex rPos pos) "{" ++ pRCT ts pos cPos rPos 1 ++ coloring (elemIndex rPos pos) "}"
-    where
-        pRCT [] pos cPos rPos idx = " **Error: The term's list in this Tuple is empty.** "
-        pRCT (t:[]) pos cPos rPos idx = pRC' t pos (cPos ++ [idx]) rPos
-        pRCT (t:ts) pos cPos rPos idx = pRC' t pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ts pos cPos rPos (idx + 1)
-pRC' (P (T ts) i) pos cPos rPos = pRC' (T ts) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) "." ++ coloring (elemIndex cPos pos) (show i)
-pRC' (P t i) pos cPos rPos = pRC' t pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) "." ++ coloring (elemIndex rPos pos) (show i)
-pRC' m             pos cPos rPos = coloring (elemIndex rPos pos) $ showTerm m
+pRCshow :: Bool -> Expr -> String
+pRCshow isU m = if isU then showTerm m else show m
 
 -------------------------------------------------------------------------------
 -- Position

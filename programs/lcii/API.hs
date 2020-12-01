@@ -45,7 +45,7 @@ withInfo opts desc = info (helper <*> opts) $ progDesc desc
 -------------------------------------------------------------------------------
 showRedexForWeb :: [String] -> [Decl] -> Expr -> IO ()
 showRedexForWeb xi ga t = do
-    printWithColor t
+    printWithColor False t
     if hasFailure $ typing xi ga t
     then do
         putStrLn "Typing Error"
@@ -54,19 +54,19 @@ showRedexForWeb xi ga t = do
         then do
             putStrLn "Normal Form"
         else do
-            showRedexes t
+            showRedexes False t
             putStr "簡約したいRedexの番号を入力してください．"
 
 
 -- Untyped
 showRedexForWeb' :: Expr -> IO ()
 showRedexForWeb' t = do
-    printWithColor' t
+    printWithColor True t
     if getRedexPos t [] == []
     then do
         putStrLn "Normal Form"
     else do
-        showRedexes' t
+        showRedexes True t
         putStr "簡約したいRedexの番号を入力してください．"
 
 -------------------------------------------------------------------------------

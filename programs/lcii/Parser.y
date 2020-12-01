@@ -29,7 +29,6 @@ import DataType
 '=>'    { TLArrow }
 '+'     { TPlus }
 '∀'    { TAll }
-'Empty' { Empty }
 
 INT     { TINT }
 BOOL    { TBOOL }
@@ -41,6 +40,11 @@ UNIT    { TUNIT }
 '>'     { RAngle }
 '='     { TEqual }
 'of'    { TOf }
+
+'Empty' { Empty }
+
+'succ'  { TSucc }
+'pred'  { TPred }
 
 NUM     { Num $$ }
 ID      { ID $$ }
@@ -121,13 +125,27 @@ decl:   ID ':' type     { ($1,$3) }
 terms:  term             { [$1] }
  |      term ',' terms   { $1 : $3 }
 
-term:   '(' term ')'             { $2 }
- |      ID ':' type              { C $1 $3 }
- |      ID                       { V $1 }
- |      'λ' ID '.' term          { L $2 INT $4 }
- |      '{' terms '}'            { T $2 }
- |      term '.' NUM             { P $1 $3 }
- |      term term %prec APP      { A $1 $2 }
+recTerms: ID '=' term                { [($1, $3)] }
+ |        ID '=' term ',' recTerms   { ($1, $3) : $5 }
+
+caseTerms: ID '=>' term                { [($1, $3)] }
+ |         ID '=>' term ',' caseTerms  { ($1, $3) : $5 }
+
+term:   '(' ')'                     { U }
+ |      '(' term ')'                { $2 }
+ |      ID                          { V $1 }
+ |      NUM                         { N $1 }
+ |      'λ' ID '.' term             { L $2 Unit $4 }
+ |      '{' terms '}'               { T $2 }
+ |      term '.' NUM                { P $1 $3 }
+ |      term term %prec APP         { A $1 $2 }
+ |      '{' recTerms '}'            { R $2 }
+ |      term '.' ID                 { F $1 $3 }
+ |      '(' '<' ID '=' term '>' ')' { Inj $3 $5 Unit }
+ |      'case' term 'of' caseTerms  { Case $2 $4 }
+ |      'succ' '(' term ')'         { A (L "n" Unit (L "f" Unit (L "x" Unit (A (V "f") (A (A (V "n") (V "f")) (V "x")))))) $3 }
+ |      'pred' '(' term ')'         { A (L "n" Unit (L "f" Unit (L "x" Unit (A (A (A (V "n") (L "g" Unit (L "h" Unit (A (V "h") (A (V "g") (V "f")))))) (L "u" Unit (V "x"))) (L "u" Unit (V "u")))))) $3 }
+ |      term '+' term               { A (A (L "m" Unit (L "n" Unit (A (A (V "m") (L "n" Unit (L "f" Unit (L "x" Unit (A (V "f") (A (A (V "n") (V "f")) (V "x"))))))) (V "n")))) $1) $3 }
 
 {
 parseError :: [Token] -> a

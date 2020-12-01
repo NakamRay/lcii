@@ -131,7 +131,6 @@ showExpr (TyA m tau) = exprL ++ " " ++ exprR
 
 showTerm :: Expr -> String
 showTerm U           = "()"
-showTerm (C x tau)   = x
 showTerm (V x)       = x
 showTerm (A m1 m2)   = exprL ++ " " ++ exprR
     where
@@ -143,9 +142,21 @@ showTerm (A m1 m2)   = exprL ++ " " ++ exprR
                     L x tau m -> "(" ++ showTerm (L x tau m) ++ ")"
                     m         -> showTerm m
 showTerm (L x tau m) = "λ" ++ x ++ "." ++ showTerm m
-showTerm (T ms)      = "{" ++ showExprs (map (\x -> showTerm x) ms) ++ "}"
+showTerm (T ms)      = "{" ++ showTerms (map (\x -> showTerm x) ms) ++ "}"
     where
-        showExprs []     = " **Error: The term's list in this Tuple is empty.** "
-        showExprs (s:[]) = s
-        showExprs (s:ss) = s ++ ", " ++ showExprs ss
+        showTerms []     = " **Error: The list in the Tuple is empty.** "
+        showTerms (s:[]) = s
+        showTerms (s:ss) = s ++ ", " ++ showTerms ss
 showTerm (P m i)     = showTerm m ++ "." ++ show i
+showTerm (R ms)      = "{" ++ showTerms (map (\(s,m') -> (s,showTerm m')) ms) ++ "}"
+    where
+        showTerms []     = " **Error: The list in the Rec is empty.** "
+        showTerms ((s, m):[]) = s ++ " = " ++ m
+        showTerms ((s, m):ss) = s ++ " = " ++ m ++ ", " ++ showTerms ss
+showTerm (F m s)     = showTerm m ++ "." ++ s
+showTerm (Inj s m tau) = "(<" ++ s ++ " = " ++ showTerm m ++ ">" ++ ")"
+showTerm (Case m ms)    = "case " ++ showTerm m ++ " of " ++ showTerms (map (\(s,m') -> (s,showTerm m')) ms)
+    where
+        showTerms []     = " **Error: The list in the Case is empty.** "
+        showTerms ((s, m):[]) = s ++ " => " ++ m
+        showTerms ((s, m):ss) = s ++ " => " ++ m ++ ", " ++ showTerms ss
