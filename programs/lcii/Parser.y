@@ -28,6 +28,7 @@ import DataType
 '->'    { TArrow }
 '=>'    { TLArrow }
 '+'     { TPlus }
+'-'     { TMinus }
 '∀'    { TAll }
 
 INT     { TINT }
@@ -146,6 +147,7 @@ term:   '(' ')'                     { U }
  |      'succ' '(' term ')'         { A (L "n" Unit (L "f" Unit (L "x" Unit (A (V "f") (A (A (V "n") (V "f")) (V "x")))))) $3 }
  |      'pred' '(' term ')'         { A (L "n" Unit (L "f" Unit (L "x" Unit (A (A (A (V "n") (L "g" Unit (L "h" Unit (A (V "h") (A (V "g") (V "f")))))) (L "u" Unit (V "x"))) (L "u" Unit (V "u")))))) $3 }
  |      term '+' term               { A (A (L "m" Unit (L "n" Unit (A (A (V "m") (L "n" Unit (L "f" Unit (L "x" Unit (A (V "f") (A (A (V "n") (V "f")) (V "x"))))))) (V "n")))) $1) $3 }
+ |      term '-' term               { A (A (L "m" Unit (L "n" Unit (A (A (V "n") ((L "n" Unit (L "f" Unit (L "x" Unit (A (A (A (V "n") (L "g" Unit (L "h" Unit (A (V "h") (A (V "g") (V "f")))))) (L "u" Unit (V "x"))) (L "u" Unit (V "u")))))))) (V "m")))) $1) $3 }
 
 {
 parseError :: [Token] -> a

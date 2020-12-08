@@ -26,6 +26,7 @@ $white+			    ;
 "->"            { \pos _ -> TArrow }
 "=>"            { \pos _ -> TLArrow }
 "+"             { \pos _ -> TPlus }
+"-"             { \pos _ -> TMinus }
 "∀"            { \pos _ -> TAll }
 
 "INT"           { \pos _ -> TINT }
@@ -57,7 +58,7 @@ $digit+         { \pos s -> Num (read s) }
 
 {
 data Token = LPar | RPar | LSBracket | RSBracket | LBrace | RBrace
-     | Empty | TPlus | TLLam
+     | Empty | TPlus | TMinus | TLLam
      | TINT | TBOOL | TUNIT | TAll
      | TLam | TDot | TCom | TCol | TArrow | TLArrow
      | TCase | LAngle | RAngle | TEqual | TOf
