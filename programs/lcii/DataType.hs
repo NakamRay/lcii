@@ -13,7 +13,7 @@ data Type = Unit
           | TyVar String
           | Poly String Type
           | Failure
-          deriving (Eq)
+          deriving (Eq,Show)
 
 data Expr = U -- Unit
           | C Id Type -- Const
@@ -29,13 +29,13 @@ data Expr = U -- Unit
           | TyL String Expr -- Type Abstraction
           | TyA Expr Type -- Type Application
           | N Int -- numbers to lambda term
-            deriving (Eq)
+            deriving (Eq,Show)
 
-instance Show Type where
-    show = showType
+-- instance Show Type where
+--     show = showType
 
-instance Show Expr where
-    show = showExpr
+-- instance Show Expr where
+--     show = showExpr
 
 -- Names of bound variables
 bound = ["x","y","z","u","v","w"] ++ map (:[]) ['a'..'t']

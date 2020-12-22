@@ -46,12 +46,14 @@ UNIT    { TUNIT }
 
 'succ'  { TSucc }
 'pred'  { TPred }
+'true'  { TTrue }
+'false' { TFalse }
 
 NUM     { Num $$ }
 ID      { ID $$ }
 TyID    { TyID $$ }
 
-%nonassoc '(' ID
+%nonassoc ID NUM '(' '{' 'λ' 'Λ' 'case'
 %nonassoc APP
 
 %%
@@ -95,7 +97,7 @@ prod:   type            { [$1] }
 sum:    ID ':' type            { [($1, $3)] }
  |      ID ':' type ',' sum    { ($1, $3) : $5 }
 
-type:   '(' type ')'      { ($2) }
+type:   '(' type ')'      { $2 }
  |      INT               { INT }
  |      BOOL              { BOOL }
  |      TyID              { TyVar $1 }
@@ -144,10 +146,12 @@ term:   '(' ')'                     { U }
  |      term '.' ID                 { F $1 $3 }
  |      '(' '<' ID '=' term '>' ')' { Inj $3 $5 Unit }
  |      'case' term 'of' caseTerms  { Case $2 $4 }
- |      'succ' '(' term ')'         { A (L "n" Unit (L "f" Unit (L "x" Unit (A (V "f") (A (A (V "n") (V "f")) (V "x")))))) $3 }
- |      'pred' '(' term ')'         { A (L "n" Unit (L "f" Unit (L "x" Unit (A (A (A (V "n") (L "g" Unit (L "h" Unit (A (V "h") (A (V "g") (V "f")))))) (L "u" Unit (V "x"))) (L "u" Unit (V "u")))))) $3 }
+ |      'succ'                      { L "n" Unit (L "f" Unit (L "x" Unit (A (V "f") (A (A (V "n") (V "f")) (V "x"))))) }
+ |      'pred'                      { L "n" Unit (L "f" Unit (L "x" Unit (A (A (A (V "n") (L "g" Unit (L "h" Unit (A (V "h") (A (V "g") (V "f")))))) (L "u" Unit (V "x"))) (L "u" Unit (V "u"))))) }
  |      term '+' term               { A (A (L "m" Unit (L "n" Unit (A (A (V "m") (L "n" Unit (L "f" Unit (L "x" Unit (A (V "f") (A (A (V "n") (V "f")) (V "x"))))))) (V "n")))) $1) $3 }
  |      term '-' term               { A (A (L "m" Unit (L "n" Unit (A (A (V "n") ((L "n" Unit (L "f" Unit (L "x" Unit (A (A (A (V "n") (L "g" Unit (L "h" Unit (A (V "h") (A (V "g") (V "f")))))) (L "u" Unit (V "x"))) (L "u" Unit (V "u")))))))) (V "m")))) $1) $3 }
+ |      'true'                      { (L "x" Unit (L "y" Unit (V "x"))) }
+ |      'false'                     { (L "x" Unit (L "y" Unit (V "y"))) }
 
 {
 parseError :: [Token] -> a

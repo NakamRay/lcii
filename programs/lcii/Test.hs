@@ -17,38 +17,31 @@ typingTest xi ga t = do
   putStrLn $ "Exp: " ++ t
   putStrLn $ "τ  : " ++ show (typing (parseTypeContext xi) (parseEnv ga) (parseExp t))
 
-utest1 = iiUntyped (parseTerm "((λx.λy.(λz.x) y) y) z")
-utest2 = iiUntyped (parseTerm "case (<fun1=y>) of fun1 => λx.x, fun2 => λx.z")
-utest3 = iiUntyped (parseTerm "{num=i, boolean=b}.boolean")
-utest4 = iiUntyped (parseTerm "{x, y, z}.2")
-utest5 = iiUntyped (parseTerm "case (<fun1=y>) of fun1 => λx.x, fun2 => {num=i, boolean=b}.boolean")
-utest6 = iiUntyped $ parseTerm "case (<plus=2>) of plus => λx.x + 1"
+iiTest xi ga t = do
+  putStrLn $ "Ξ  : " ++ xi
+  putStrLn $ "Γ  : " ++ ga
+  putStrLn $ "Exp: " ++ t
+  ii (parseTypeContext xi) (parseEnv ga) (parseExp t)
 
 -- reduction test
-test1 = ii [] (parseEnv "x:INT, y:INT, z:INT") (parseExp "((λx:INT.λy:INT.(λz:INT.x) y) y) z")
-test2 = ii [] [] (parseExp "case (<fun1=i:INT>:<fun1:INT,fun2:BOOL>) of fun1 => λx:INT.x, fun2 => λx:BOOL.n:INT")
-test3 = ii [] [] (parseExp "(λa:INT.case ((λx:<fun1:INT,fun2:BOOL>.x) (<fun1=i:INT>:<fun1:INT,fun2:BOOL>)) of fun1 => λx:INT.((λy:INT.y) x), fun2 => λx:BOOL.a) c:INT")
+utest1 = iiUntyped $ parseTerm "((λx.λy.(λz.x) y) y) z"
+utest2 = iiUntyped $ parseTerm "case (<fun1=y>) of fun1 => λx.x, fun2 => λx.z"
+utest3 = iiUntyped $ parseTerm "{num=i, boolean=b}.boolean"
+utest4 = iiUntyped $ parseTerm "{x, y, z}.2"
+utest6 = iiUntyped $ parseTerm "case (<inc=2>) of inc => λx.x + 1, dec => λx.x - 1"
+utest7 = iiUntyped $ parseTerm "(λn.(n (λx.false)) true) 0"
+utest8 = iiUntyped $ parseTerm "(λn.(n (λx.false)) true) 1"
 
-ltest = ii [] [] (F (R [("num", (C "i" INT)), ("boolean", (C "b" BOOL))]) "boolean")
+test1 = iiTest "Empty" "x:INT, y:INT, z:INT" "((λx:INT.λy:INT.(λz:INT.x) y) y) z"
+test2 = iiTest "Empty" "i:INT, n:INT" "case (<fun1=i>:<fun1:INT,fun2:BOOL>) of fun1 => λx:INT.x, fun2 => λx:BOOL.n"
+test3 = iiTest "Empty" "i:INT, n:INT" "(λa:INT.case ((λx:<fun1:INT,fun2:BOOL>.x) (<fun1=i>:<fun1:INT,fun2:BOOL>)) of fun1 => λx:INT.((λy:INT.y) x), fun2 => λx:BOOL.a) n"
+test4 = iiTest "String" "s:String, i:INT" "(λx:{name:String, age:INT}.x.name) {name=s, age=i}"
 
-ptest = ii [] [] $
-  TyA
-    (TyL "t"
-      (A
-        (A
-          (L "x" (BOOL :=> INT) (V "x"))
-          (C "f" (TyVar "t" :=> INT))
-        )
-        (A
-          (L "x" (TyVar "t") (V "x"))
-          (C "c" (TyVar "t"))
-        )
-      )
-    )
-    BOOL
+ltest = iiTest "Empty" "i:INT, b:BOOL" "{num=i, boolean=b}.boolean"
 
-ptest2 = ii [] [] $ parseExp "Λt.λf:t->INT.λc:t.(λx:t->INT.x) f ((λx:t.x) c)"
+ptest2 = iiTest "Empty" "Empty" "ΛT.λf:T->INT.λc:T.(λx:T->INT.x) f ((λx:T.x) c)"
 
+-- typing test
 tytPoly1 = typingTest "Empty" "Empty" "ΛA.λf:A->INT.f"
 tytPoly2 = typingTest "A" "Empty" "(ΛX.ΛA.λf:A->X.f) A"
 tytXi1   = typingTest "A" "Empty" "λf:A->INT.f"

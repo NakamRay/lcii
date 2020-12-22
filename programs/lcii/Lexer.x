@@ -47,6 +47,8 @@ $white+			    ;
 
 "succ"          { \pos _ -> TSucc }
 "pred"          { \pos _ -> TPred }
+"true"          { \pos _ -> TTrue }
+"false"         { \pos _ -> TFalse }
 
 [\λ \\]         { \pos _ -> TLam }
 [\Λ \&]         { \pos _ -> TLLam }
@@ -63,7 +65,7 @@ data Token = LPar | RPar | LSBracket | RSBracket | LBrace | RBrace
      | TLam | TDot | TCom | TCol | TArrow | TLArrow
      | TCase | LAngle | RAngle | TEqual | TOf
      | Num Int | ID String | TyID String
-     | TSucc | TPred
+     | TSucc | TPred | TTrue | TFalse
      deriving (Show,Eq)
 
 prettyAlexPosn (AlexPn _ line col) = 
