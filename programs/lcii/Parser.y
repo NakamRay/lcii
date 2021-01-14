@@ -105,7 +105,7 @@ type:   '(' type ')'      { $2 }
  |      '{' prod '}'      { Prod $2 }
  |      '{' sum '}'       { Rec $2 }
  |      '<' sum '>'       { Var $2 }
- |      '∀' ID '.' type  { Poly $2 $4 }
+ |      '∀' TyID '.' type  { Poly $2 $4 }
  |      UNIT              { Unit }
 
 -- type context

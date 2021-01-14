@@ -31,18 +31,18 @@ html' Magenta   str = "<font color=\"magenta\">"++str++"</font>"
 html' Cyan      str = "<font color=\"darkturquoise\">"++str++"</font>"
 html' co        str = str
 
-coloring :: Maybe Int -> String -> String
-coloring Nothing s = s
-coloring (Just 0) s = ansi' Green s
-coloring (Just 1) s = ansi' Cyan s
-coloring (Just 2) s = ansi' Blue s
-coloring (Just 3) s = ansi' Magenta s
-coloring _ s = s
-
 -- coloring :: Maybe Int -> String -> String
 -- coloring Nothing s = s
--- coloring (Just 0) s = html' Green s
--- coloring (Just 1) s = html' Cyan s
--- coloring (Just 2) s = html' Blue s
--- coloring (Just 3) s = html' Magenta s
+-- coloring (Just 0) s = ansi' Green s
+-- coloring (Just 1) s = ansi' Cyan s
+-- coloring (Just 2) s = ansi' Blue s
+-- coloring (Just 3) s = ansi' Magenta s
 -- coloring _ s = s
+
+coloring :: Maybe Int -> String -> String
+coloring Nothing s = s
+coloring (Just 0) s = html' Green s
+coloring (Just 1) s = html' Cyan s
+coloring (Just 2) s = html' Blue s
+coloring (Just 3) s = html' Magenta s
+coloring _ s = s

@@ -16,6 +16,7 @@ import System.Environment (getArgs)
 -------------------------------------------------------------------------------
 data Command = Init Bool String String String
              | Reduce Bool String String String String
+             | TypingCheck String String String
 
 parseInit :: Parser Command
 parseInit = Init
@@ -32,10 +33,17 @@ parseReduce = Reduce
     <*> argument str (metavar "TERM")
     <*> argument str (metavar "INT")
 
+parseTypingCheck :: Parser Command
+parseTypingCheck = TypingCheck
+    <$> argument str (metavar "XI")
+    <*> argument str (metavar "GAMMA")
+    <*> argument str (metavar "TERM")
+
 parseCommand :: Parser Command
 parseCommand = subparser $
     command "init" (parseInit `withInfo` "Initialize process") <>
-    command "red"  (parseReduce  `withInfo` "One step reduction")
+    command "red"  (parseReduce  `withInfo` "One step reduction") <>
+    command "check"  (parseTypingCheck  `withInfo` "Typing Check") 
 
 withInfo :: Parser a -> String -> ParserInfo a
 withInfo opts desc = info (helper <*> opts) $ progDesc desc
@@ -81,19 +89,19 @@ main = do
         Init isUntyped xi gamma term ->
             if isUntyped
                 then do
-                    let term' = parseTerm term
+                    let term' = n2l $ parseTerm term
                     catch (showRedexForWeb' term') $ \(SomeException e) -> print "Parse Error"
                 else do
                     let
                         xi' = parseTypeContext xi
                         gamma' = parseEnv gamma
-                        term' = parseExp term
+                        term' = n2l $ parseExp term
                     catch (showRedexForWeb xi' gamma' term') $ \(SomeException e) -> print e
         Reduce isUntyped xi gamma term num ->
             if isUntyped
                 then do
                     let
-                        term' = parseTerm term
+                        term' = n2l $ parseTerm term
                         occ = getRedexPos term' []
                         idx = (read num :: Int) - 1
                     if idx > length occ - 1
@@ -111,7 +119,7 @@ main = do
                     let
                         xi' = parseTypeContext xi
                         gamma' = parseEnv gamma
-                        term' = parseExp term
+                        term' = n2l $ parseExp term
                         occ = getRedexPos term' []
                         idx = (read num :: Int) - 1
                     if idx > length occ - 1
@@ -125,3 +133,13 @@ main = do
                                     putStr $ html' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
                                     putStrLn ""
                             showRedexForWeb xi' gamma' $ reduction term' (occ !! idx)
+        TypingCheck xi gamma term -> do
+            let
+                xi' = parseTypeContext xi
+                gamma' = parseEnv gamma
+                term' = n2l $ parseExp term
+            if hasFailure $ typing xi' gamma' term'
+                then do
+                    putStrLn "Typing Error"
+                else do
+                    putStrLn $ show $ typing xi' gamma' term'

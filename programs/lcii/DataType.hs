@@ -13,7 +13,7 @@ data Type = Unit
           | TyVar String
           | Poly String Type
           | Failure
-          deriving (Eq,Show)
+          deriving (Eq)
 
 data Expr = U -- Unit
           | C Id Type -- Const
@@ -29,13 +29,13 @@ data Expr = U -- Unit
           | TyL String Expr -- Type Abstraction
           | TyA Expr Type -- Type Application
           | N Int -- numbers to lambda term
-            deriving (Eq,Show)
+            deriving (Eq)
 
--- instance Show Type where
---     show = showType
+instance Show Type where
+    show = showType
 
--- instance Show Expr where
---     show = showExpr
+instance Show Expr where
+    show = showExpr
 
 -- Names of bound variables
 bound = ["x","y","z","u","v","w"] ++ map (:[]) ['a'..'t']
@@ -160,3 +160,4 @@ showTerm (Case m ms)    = "case " ++ showTerm m ++ " of " ++ showTerms (map (\(s
         showTerms []     = " **Error: The list in the Case is empty.** "
         showTerms ((s, m):[]) = s ++ " => " ++ m
         showTerms ((s, m):ss) = s ++ " => " ++ m ++ ", " ++ showTerms ss
+showTerm (N i) = show i

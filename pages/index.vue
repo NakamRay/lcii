@@ -3,6 +3,7 @@
     <v-navigation-drawer
       v-model="historyDrawer"
       disable-resize-watcher
+      temporary
       app
       right
       width="500"
@@ -32,6 +33,7 @@
     <v-navigation-drawer
       v-model="examplesDrawer"
       disable-resize-watcher
+      temporary
       app
       right
       width="500"
@@ -46,7 +48,7 @@
         </v-subheader>
         <v-divider></v-divider>
         <v-tabs>
-          <v-tab>Simply Typed</v-tab>
+          <v-tab>Typed</v-tab>
           <v-tab>Untyped</v-tab>
           <v-tab-item>
             <v-list-item
@@ -63,11 +65,12 @@
                   elevation="2"
                   colored-border
                 >
-                  <div class="overline">TYPING ENVIRONMENT</div>
-                  <span class="drawer-text" v-html="example.env"></span>
+                  <div class="drawer-text my-2">Ξ: {{example.envType}}</div>
+                  <v-divider class="my-1"></v-divider>
+                  <div class="drawer-text my-2">Γ: {{example.envTerm}}</div>
                   <v-divider class="my-1"></v-divider>
                   <div class="overline">TERM</div>
-                  <span class="drawer-text" v-html="example.term"></span>
+                  <span class="drawer-text">{{example.term}}</span>
                 </v-alert>
               </v-list-item-title>
             </v-list-item>
@@ -88,7 +91,7 @@
                   colored-border
                 >
                   <div class="overline">TERM</div>
-                  <span class="drawer-text" v-html="example.term"></span>
+                  <span class="drawer-text">{{example.term}}</span>
                 </v-alert>
               </v-list-item-title>
             </v-list-item>
@@ -100,6 +103,7 @@
     <v-navigation-drawer
       v-model="defsDrawer"
       disable-resize-watcher
+      temporary
       app
       right
       width="500"
@@ -137,15 +141,17 @@
     <v-dialog v-model="editDialog" persistent max-width="600px">
       <v-card>
         <v-card-title>
-          <span class="headline">Edit Typing Environment</span>
+          <span class="headline">Edit Environment</span>
         </v-card-title>
         <v-card-text>
-          <v-text-field label="Typing Environment*" :value="ga" v-model="editedGa" spellcheck="false" required></v-text-field>
+          <v-text-field label="Ξ: Type Context" :value="xi" v-model="editedXi" spellcheck="false" required></v-text-field>
+          <v-text-field label="Γ: Term Context" :value="ga" v-model="editedGa" spellcheck="false" required></v-text-field>
+          <v-text-field label="λ: Term" :value="originalTerm" v-model="editedTerm" spellcheck="false" required></v-text-field>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="blue darken-1" text @click="editDialog = false">Close</v-btn>
-          <v-btn color="blue darken-1" text @click="saveEditedGa" :disabled="editedGa == ''">Save</v-btn>
+          <v-btn color="blue darken-1" text @click="saveEditedEnv" :disabled="editedXi == '' || editedGa == '' || editedTerm == ''">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -168,19 +174,19 @@
                     <v-col cols="6" class="py-0">
                       <div class="overline">TYPE CONTEXT</div>
                       <v-list-item-title class="text--primary">
-                        <span v-html="xi"></span>
+                        {{ xi }}
                       </v-list-item-title>
                     </v-col>
                     <v-col cols="6" class="py-0">
                       <div class="overline">TERM CONTEXT</div>
                       <v-list-item-title class="text--primary">
-                        <span v-html="ga"></span>
+                        {{ ga }}
                       </v-list-item-title>
 
                       <v-btn
                         icon
                         style="position: absolute; right: 20px; top: 20px;"
-                        @click.stop="editedGa = ga; editDialog = true"
+                        @click.stop="editedXi = xi; editedGa = ga; editedTerm = originalTerm; editDialog = true"
                       >
                         <v-icon>mdi-square-edit-outline</v-icon>
                       </v-btn>
@@ -191,7 +197,7 @@
 
                   <div class="overline">LAMBDA TERM</div>
                   <v-list-item-title class="text--primary">
-                    <span v-html="originalTerm"></span>
+                    {{ originalTerm }}
                   </v-list-item-title>
 
                 </v-list-item-content>
@@ -245,19 +251,19 @@
               </v-col>
 
               <v-col class="px-0" style="flex-grow: unset;">
-                <v-btn icon @click.stop="historyDrawer = !historyDrawer; examplesDrawer = false">
+                <v-btn icon @click="closeDrawer(); historyDrawer = !historyDrawer">
                   <v-icon>mdi-history</v-icon>
                 </v-btn>
               </v-col>
 
               <v-col class="px-0" style="flex-grow: unset;">
-                <v-btn icon @click.stop="examplesDrawer = !examplesDrawer; historyDrawer = false">
+                <v-btn icon @click="closeDrawer(); examplesDrawer = !examplesDrawer">
                   <v-icon>mdi-lambda</v-icon>
                 </v-btn>
               </v-col>
 
               <v-col class="px-0" style="flex-grow: unset;">
-                <v-btn icon @click.stop="defsDrawer = !defsDrawer; historyDrawer = false">
+                <v-btn icon @click="closeDrawer(); defsDrawer = !defsDrawer">
                   <v-icon>mdi-order-alphabetical-ascending</v-icon>
                 </v-btn>
               </v-col>
@@ -290,8 +296,17 @@
             fab
             dark
             small
+            color="purple"
+            @click="closeDrawer(); defsDrawer = !defsDrawer"
+          >
+            <v-icon>mdi-order-alphabetical-ascending</v-icon>
+          </v-btn>
+          <v-btn
+            fab
+            dark
+            small
             color="green"
-            @click.stop="examplesDrawer = !examplesDrawer; historyDrawer = false"
+            @click="closeDrawer(); examplesDrawer = !examplesDrawer"
           >
             <v-icon>mdi-lambda</v-icon>
           </v-btn>
@@ -300,7 +315,7 @@
             dark
             small
             color="indigo"
-            @click.stop="historyDrawer = !historyDrawer; examplesDrawer = false"
+            @click="closeDrawer(); historyDrawer = !historyDrawer"
           >
             <v-icon>mdi-history</v-icon>
           </v-btn>
@@ -328,6 +343,9 @@ export default {
     inputFormHeight: 0,
     envHeight: 0,
     consoleHeight: 0,
+    delHTML: /<([^>]*"[^>]|[^>=])*>/g,
+    popInj: /<[^>"]*=[^>"]*>/g,
+    // delHTML: /<("[^"]*"|'[^']*'|[^'">])*>/g,
     emptyToken: 'Empty',
     initialMessage: ':help :h ヘルプ',
     invalidInputMessage: '無効な入力です．',
@@ -337,7 +355,9 @@ export default {
     isUntyped: false,
     isRunning: false,
     editDialog: false,
+    editedXi: '',
     editedGa: '',
+    editedTerm: '',
     fab: false,
     historyDrawer: false,
     examplesDrawer: false,
@@ -385,14 +405,13 @@ export default {
         console.log(cmd)
         console.log(value)
         this.command(cmd, value)
-        return
       }
 
       // Define
       match = input.match(/^\$([A-Z]|[a-z])+\s*=\s*/g)
       if (match) {
         const lhs = input.match(/^\$([A-Z]|[a-z])+/g)[0]
-        const rhs = input.replace(match[0], '')
+        const rhs = '('+ input.replace(match[0], '') + ')'
 
         if (!rhs) {
           this.outputs.push( { text: this.invalidInputMessage } )
@@ -402,13 +421,13 @@ export default {
         for (let i = 0; i < this.defs.length; i++) {
           if (this.defs[i].binder === lhs) {
             this.defs[i].exp = rhs
-            this.outputs.push( { text: `${lhs} = ${rhs}` } )
+            this.outputs.push( { text: `${lhs} = ${rhs.replace('<', '&lt;').replace('>', '&gt;')}` } )
             return
           }
         }
 
         this.defs.push( { binder: lhs, exp: rhs } )
-        this.outputs.push( { text: `${lhs} = ${rhs}` } )
+        this.outputs.push( { text: `${lhs} = ${rhs.replace('<', '&lt;').replace('>', '&gt;')}` } )
         console.log(this.defs)
         return
       }
@@ -419,7 +438,7 @@ export default {
         if (this.defs.length > 0) {
           for (let i = 0; i < this.defs.length; i++) {
             if (this.defs[i].binder === match[0]) {
-              this.outputs.push( { text: `${match[0]} = ${this.defs[i].exp}` } )
+              this.outputs.push( { text: `${match[0]} = ${this.defs[i].exp.replace('<', '&lt;').replace('>', '&gt;')}` } )
               return
             }
           }
@@ -441,7 +460,7 @@ export default {
           this.outputs.push( { text: this.argumentEmptyMessage } )
           return
         }
-        this.outputs.push( { text: 'Ξ: ' + value } )
+        this.outputs.push( { text: 'Ξ: ' + value.replace('<', '&lt;').replace('>', '&gt;') } )
         this.xi = value
         return
       }
@@ -450,11 +469,11 @@ export default {
           this.outputs.push( { text: this.argumentEmptyMessage } )
           return
         }
-        this.outputs.push( { text: 'Γ: ' + value } )
+        this.outputs.push( { text: 'Γ: ' + value.replace('<', '&lt;').replace('>', '&gt;') } )
         this.ga = value
         return
       }
-      if (cmd === 'term' || cmd === 't' || cmd === 'lambda' || cmd === 'l') {
+      if (cmd === 'lambda' || cmd === 'l') {
         if (!value) {
           this.outputs.push( { text: this.argumentEmptyMessage } )
           return
@@ -474,16 +493,24 @@ export default {
           }
         }
 
-        this.outputs.push( { text: 'λ-term: ' + newTerm } )
-        this.term = newTerm
+        this.outputs.push( { text: 'λ-term: ' + newTerm.replace('<', '&lt;').replace('>', '&gt;') } )
         this.originalTerm = newTerm
         return
       }
+      if (cmd === 'type' || cmd === 't') {
+        let newTerm = value
+
+        this.typingCheck()
+        return
+      }
       if (cmd === 'run' || cmd === 'r') {
-        if (this.term === this.emptyToken) {
+        if (this.originalTerm === this.emptyToken) {
           this.outputs.push( { text: 'ラムダ式をセットしてください．（:helpでヘルプ）' } )
           return
         }
+
+        this.term = this.originalTerm
+
         if (value === '-untyped' || value === '-u') {
           this.isUntyped = true
         } else {
@@ -504,7 +531,7 @@ export default {
           this.outputs.push( { text: 'None' } )
         }
         this.defs.forEach(def => {
-          this.outputs.push( { text: `${def.binder} = ${def.exp}` } )
+          this.outputs.push( { text: `${def.binder} = ${def.exp.replace('<', '&lt;').replace('>', '&gt;')}` } )
         })
         return
       }
@@ -542,7 +569,7 @@ export default {
           params.append('ga', this.ga)
           params.append('term', this.term)
           params.append('isUntyped', this.isUntyped)
-          params.append('isInit', true)
+          params.append('mode', 'init')
 
       var vm = this
 
@@ -555,11 +582,22 @@ export default {
             vm.init(true)
             return
           }
-          vm.outputs.push( { text: opt } )
+          var match = opt.match(vm.popInj)
+          var text = opt
+          if (match) {
+            match.forEach(x => {
+              text = text.replace(x, '&lt;' + x.substring(1, x.length - 1) + '&gt;')
+            })
+          }
+          vm.outputs.push( { text: text } )
           if (opt.indexOf('Normal') == -1 && opt.indexOf('Error') == -1) {
-            vm.term = opt.substring(0, opt.indexOf('<br>')).replace(/<("[^"]*"|'[^']*'|[^'">])*>/g,'')
+            vm.term = opt.substring(0, opt.indexOf('<br>')).replace(vm.delHTML,'')
+            console.log(vm.term)
           } else {
-            vm.init(true)
+            vm.isRunning = false
+            vm.term = vm.emptyToken
+            
+            vm.outputs.push( { text: '<br>' }, { text: vm.initialMessage } )
           }
         })
         .catch(function(err){
@@ -574,7 +612,7 @@ export default {
           params.append('term', this.term)
           params.append('num', this.num)
           params.append('isUntyped', this.isUntyped)
-          params.append('isInit', false)
+          params.append('mode', 'red')
 
       var vm = this
 
@@ -582,7 +620,16 @@ export default {
         .then(function(response){
           vm.outputs.push( { text: '> ' + vm.num } )
           var opt = response.data
-          vm.outputs.push( { text: opt } )
+          console.log(opt)
+          
+          var match = opt.match(vm.popInj)
+          var text = opt
+          if (match) {
+            match.forEach(x => {
+              text = text.replace(x, '&lt;' + x.substring(1, x.length - 1) + '&gt;')
+            })
+          }
+          vm.outputs.push( { text: text } )
           if (opt.indexOf('Normal') == -1 && opt.indexOf('Error') == -1) {
             if (opt.indexOf('maximum') != -1) {
               vm.outputs.push( { text: '簡約したいRedexの番号を入力してください．' } )
@@ -591,9 +638,41 @@ export default {
             if (opt.indexOf('α') != -1) {
               opt = opt.substring(opt.indexOf('<br>') + 4)
             }
-            vm.term = opt.substring(0, opt.indexOf('<br>')).replace(/<("[^"]*"|'[^']*'|[^'">])*>/g,'')
+            vm.term = opt.substring(0, opt.indexOf('<br>')).replace(vm.delHTML,'')
           } else {
-            vm.init(true)
+            vm.isRunning = false
+            vm.term = vm.emptyToken
+            
+            vm.outputs.push( { text: '<br>' }, { text: vm.initialMessage } )
+          }
+        })
+        .catch(function(err){
+          vm.outputs.push( { text: 'サーバとの通信中にエラーが発生しました．' } )
+          console.error(err)
+        })
+    },
+    typingCheck () {
+      if (this.originalTerm === this.emptyToken) {
+        this.outputs.push( { text: 'λ式が入力されていません．' } )
+        return
+      }
+
+      let params = new URLSearchParams()
+          params.append('xi', this.xi)
+          params.append('ga', this.ga)
+          params.append('term', this.originalTerm)
+          params.append('mode', 'check')
+
+      var vm = this
+
+      axios.post(this.baseUrl + 'api.php', params)
+        .then(function(response){
+          var opt = response.data
+
+          if (opt === '') {
+            vm.outputs.push( { text: 'ラムダ式が型無しです．' } )
+          } else {
+            vm.outputs.push( { text: opt } )
           }
         })
         .catch(function(err){
@@ -606,23 +685,23 @@ export default {
       this.isRunning = true
       this.originalTerm = example.term
       this.term = example.term
-      this.ga = example.env
+      this.xi = example.envType
+      this.ga = example.envTerm
       this.examplesDrawer = false
-      this.submitTerm()
     },
     addExampleUntypedTerm (example) {
       this.isUntyped = true
       this.isRunning = true
       this.originalTerm = example.term
       this.term = example.term
-      this.ga = this.emptyToken
       this.xi = this.emptyToken
+      this.ga = this.emptyToken
       this.examplesDrawer = false
-      this.submitTerm()
     },
-    saveEditedGa () {
+    saveEditedEnv () {
+      this.xi = this.editedXi
       this.ga = this.editedGa
-      this.editGa = ''
+      this.originalTerm = this.editedTerm
       this.editDialog = false
     },
     isVarExists (input) {
@@ -647,6 +726,11 @@ export default {
       } else {
         this.outputs.push( { text: this.initialMessage } )
       }
+    },
+    closeDrawer () {
+      this.historyDrawer = false
+      this.examplesDrawer = false
+      this.defsDrawer = false
     },
     clear () {
       this.history.push( ...this.outputs, { text: '---------------- Clear ----------------' } )

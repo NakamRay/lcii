@@ -1,0 +1,23 @@
+constants
+0 : nat
+s : nat -> nat
+
+function symbols
+inc : nat -> nat
+double : nat -> nat
+
+inc x => s x
+double x => s (s x)
+
+
+(\x -> double x) 0 -> double 0 -> s (s x)
+
+多相型λ式の自動生成
+CUI -> WUIの枠組みを作る
+
+エフェクト付きλ計算λeff-calculus
+簡約規則を自分で入力できるシステム
+Unboundを導入
+型推論
+Redexをクリックで選択
+wuiでタイプチェック

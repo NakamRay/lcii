@@ -1,36 +1,44 @@
 export const state = () => ({
   typedExamples: [
     {
-      term: '(λx:INT.x) a',
-      env: 'a:INT'
-    },
-    {
-      term: '(λx:INT->INT.λy:INT.x y) a b:INT',
-      env: 'a:INT->INT'
+      term: '(λx:INT->INT.λy:INT.x y) a b',
+      envType: 'Empty',
+      envTerm: 'a:INT->INT, b:INT'
     },
     {
       term: '(λx:INT.f x) ((λx:INT.x) a)',
-      env: 'a:INT, f:INT->BOOL'
+      envType: 'Empty',
+      envTerm: 'a:INT, f:INT->BOOL'
     },
     {
       term: '(λx:INT->INT.λy:INT.x y) y',
-      env: 'y:INT->INT'
+      envType: 'Empty',
+      envTerm: 'y:INT->INT'
     },
     {
       term: '((λx:INT.(λy:INT.(λz:INT.x) y)) y) z',
-      env: 'x:INT, y:INT, z:INT'
+      envType: 'Empty',
+      envTerm: 'x:INT, y:INT, z:INT'
     },
     {
-      term: '(λx:BOOL.f x) (a, b, c).3',
-      env: 'a:INT, b:INT, c:BOOL, f:BOOL->BOOL'
+      term: '(λx:BOOL.f x) {a, b, c}.3',
+      envType: 'Empty',
+      envTerm: 'a:INT, b:INT, c:BOOL, f:BOOL->BOOL'
     },
     {
-      term: '(λx:(INT, INT, INT).x.3) (a, b, c)',
-      env: 'a:INT, b:INT, c:INT'
+      term: '(λx:{INT, BOOL, CHAR}.x.3) {a, b, c}',
+      envType: 'CHAR',
+      envTerm: 'a:INT, b:BOOL, c:CHAR'
     },
     {
-      term: '((λx:INT.x) a, (λx:BOOL.x) b, (λx:INT->INT.x) f:INT->INT).2',
-      env: 'a:INT, b:BOOL'
+      term: '{(λx:INT.x) a, (λx:BOOL.x) b, (λx:INT->INT.x) f}.2',
+      envType: 'Empty',
+      envTerm: 'a:INT, b:BOOL, f:INT->INT'
+    },
+    {
+      term: '(ΛX.ΛA.λf:A->X.f) A',
+      envType: 'A',
+      envTerm: 'Empty'
     }
   ],
   untypedExamples: [
@@ -55,16 +63,16 @@ export const state = () => ({
       desc: '型環境をLCIIにセットします．:runでセットした型環境が参照されます．'
     },
     {
-      cmd: 'term',
-      shortCmd: 't',
+      cmd: 'lambda',
+      shortCmd: 'l',
       options: [],
       desc: 'ラムダ式をLCIIにセットします．:runでセットしたラムダ式の簡約を実行します．'
     },
     {
-      cmd: 'lambda',
-      shortCmd: 'l',
+      cmd: 'type',
+      shortCmd: 't',
       options: [],
-      desc: ':termと同じ．'
+      desc: 'セットされている式の型チェックを行います．'
     },
     {
       cmd: 'run',
@@ -100,7 +108,7 @@ export const state = () => ({
       cmd: 'quit',
       shortCmd: 'q',
       options: [],
-      desc: '簡約を中止する．'
+      desc: '簡約を中止します．'
     }
   ]
 })
