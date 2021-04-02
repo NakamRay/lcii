@@ -36,8 +36,8 @@ export const state = () => ({
       envTerm: 'a:INT, b:BOOL, f:INT->INT'
     },
     {
-      term: '(ΛX.ΛA.λf:A->X.f) A',
-      envType: 'A',
+      term: '(ΛX.ΛA.λf:A->X.f) String',
+      envType: 'String',
       envTerm: 'Empty'
     }
   ],
@@ -46,8 +46,8 @@ export const state = () => ({
     { term: '(λx.x x) (λx.x x)' },
     { term: '(λx.λy.x y) f a' },
     { term: '(λx.λy.x y) ((λx.x) y)' },
-    { term: '(λx.λy.λz.x y z) (a, b, c) (d, e, f) (g, h, i)' },
-    { term: '(λx.x x) (a, b, c, d, e, (λx.x) f).6' }
+    { term: '(λx.λy.λz.x y z) {a, b, c} {d, e, f} {g, h, i}' },
+    { term: '(λx.x x) {a, b, c, d, e, (λx.x) f}.6' }
   ],
   helps: [
     {

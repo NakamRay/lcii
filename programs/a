@@ -21,3 +21,14 @@ Unboundを導入
 簡約規則を自分で入力できるシステム
 Redexをクリックで選択
 wuiでタイプチェック
+
+(a,Char)
+問題の等式 unification  problem
+a -> b =?= Char 
+unifier
+rho : a |-> Char, b |-> Int
+
+(a)rho = (Char)rho   ====> Char = Char OK
+
+
+map :  (INT -> INT) -> (forall a.b. [a] -> [b])

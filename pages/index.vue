@@ -184,7 +184,7 @@
 
                       <v-btn
                         icon
-                        style="position: absolute; right: 20px; top: 20px;"
+                        style="position: absolute; right: 20px; top: 10px;"
                         @click.stop="editedXi = xi; editedGa = ga; editedTerm = originalTerm; editDialog = true"
                       >
                         <v-icon>mdi-square-edit-outline</v-icon>
@@ -741,9 +741,10 @@ export default {
 
       for (var i = 0; i < optSplit.length; i++) {
         var text = optSplit[i]
+        var redex = text.replace(this.delHTML,'').substring(0,1)
         if (text !== '') {
-          if (!isNaN(text.replace(this.delHTML,'').substring(0,1))) {
-            addOutputs.push({ text: text, redex: i })
+          if (!isNaN(redex)) {
+            addOutputs.push({ text: text, redex: parseInt(redex) })
           } else {
             addOutputs.push({ text: text })
           }

@@ -8,6 +8,8 @@ typing :: [String] -> [Decl] -> Expr -> Type
 typing xi ga m = let tau = typing' xi ga m
                    in if typeTyping xi tau then tau else Failure
 
+-- TyL "T1" (TyL "T2" (TyL "T3" (L "n" (((TyVar "T1") :=> (TyVar "T2")) :=> ((TyVar "T3") :=> (TyVar "T1"))) (L "f" ((TyVar "T1") :=> (TyVar "T2")) (L "x" (TyVar "T3") (A (V "f") (A (A (V "n") (V "f")) (V "x"))))))))
+
 typing' :: [String] -> [Decl] -> Expr -> Type
 typing' xi ga U         = Unit
 typing' xi ga (C c tau) = tau
@@ -15,7 +17,7 @@ typing' xi ga (V x)     = if elem x (dom ga) then lkup ga x
                                              else Failure
 
 typing' xi ga (L x tau1 m) = let tau2 = typing' xi ((x,tau1):ga) m
-                            in tau1 :=> tau2
+                              in tau1 :=> tau2
 
 typing' xi ga (A m1 m2) = let tau1 = typing' xi ga m1
                               tau2 = typing' xi ga m2
@@ -38,14 +40,14 @@ typing' xi ga (F m s) = let tau = typing' xi ga m
                            then caseTypeFind (recList tau) s else Failure 
 
 typing' xi ga (Inj s m t) = let tau = typing' xi ga m
-                           in case t of
+                            in case t of
                               Var taus -> if tau == caseTypeFind taus s
                                             then Var taus else Failure
                               t' -> Failure
 
 typing' xi ga (Case m ms) = let tau = typing' xi ga m
-                           in if isVarType tau
-                              then caseType xi ga ms (varList tau) (target (typing' xi ga (snd (ms !! 0)))) else Failure
+                            in if isVarType tau
+                               then caseType xi ga ms (varList tau) (target (typing' xi ga (snd (ms !! 0)))) else Failure
 
 typing' xi ga (TyL a m) = let tau = typing' (a:xi) ga m
                            in Poly a tau

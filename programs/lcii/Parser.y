@@ -88,6 +88,7 @@ exp:    '(' ')'                       { U }
  |      'case' exp 'of' caseExps      { Case $2 $4 }
  |      'Λ' TyID '.' exp              { TyL $2 $4 }
  |      exp type                      { TyA $1 $2 }
+ |      'succ'                        { TyL "T1" (TyL "T2" (TyL "T3" (L "n" (((TyVar "T1") :=> (TyVar "T2")) :=> ((TyVar "T3") :=> (TyVar "T1"))) (L "f" ((TyVar "T1") :=> (TyVar "T2")) (L "x" (TyVar "T3") (A (V "f") (A (A (V "n") (V "f")) (V "x")))))))) }
 
 -- type
 
