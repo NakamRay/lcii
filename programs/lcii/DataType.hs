@@ -9,6 +9,7 @@
 module DataType where
 
 import Unbound.LocallyNameless
+import Unbound.LocallyNameless.Ops (unsafeUnbind)
 import Data.List
 
 type Id = String
@@ -16,19 +17,18 @@ type Id = String
 type TyName = Name Type
 type TmName = Name Expr
 
-type Decl = (Id,Type)
+type Decl = (TmName,Type)
 type Pos = [[Int]]
 
 data Type = Unit
           | INT | BOOL
-          | Type :=> Type
+          | Arr Type Type
           | Prod [Type]
           | Rec [(String, Type)]
           | Var [(String, Type)]
           | TyVar TyName
-          | Poly TyName Type
+          | Poly (Bind TyName Type)
           | Failure
-          deriving (Eq)
 
 data Expr = U -- Unit
           | C TmName Type -- Const
@@ -52,7 +52,7 @@ instance Alpha Expr
 
 instance Subst Expr Type where
 instance Subst Expr Expr where
-  isvar (TmVar x) = Just (SubstName x)
+  isvar (V x) = Just (SubstName x)
   isvar _  = Nothing
 instance Subst Type Type where
   isvar (TyVar x) = Just (SubstName x)
@@ -72,9 +72,9 @@ showType :: Type -> String
 showType Unit        = "Unit"
 showType INT         = "INT"
 showType BOOL        = "BOOL"
-showType (t1 :=> t2) = typeL ++ "->" ++ typeR
+showType (Arr t1 t2) = typeL ++ "->" ++ typeR
     where
-        isArrowType (tau1 :=> tau2) = True
+        isArrowType (Arr tau1 tau2) = True
         isArrowType tau             = False
         typeL = if isArrowType t1
                 then "(" ++ show t1 ++ ")"
@@ -97,33 +97,37 @@ showType (Var ts) = "<" ++ showTypes ts ++ ">"
         showTypes []     = " **Error: The Var type is empty.**"
         showTypes ((s, t):[]) = s ++ ":" ++ showType t
         showTypes ((s, t):ts) = s ++ ":" ++ showType t ++ ", " ++ showTypes ts
-showType (TyVar t) = t
-showType (Poly t tau) = "∀ " ++ t ++ "." ++ showType tau
+showType (TyVar t) = name2String t
+showType (Poly bnd) = "∀ " ++ (name2String t) ++ "." ++ showType tau
+    where
+        (t, tau) = unsafeUnbind bnd
 showType Failure = "Failure"
 
 showGa :: [Decl] -> IO ()
 showGa []     = putStrLn ""
-showGa (g:[]) = putStrLn $ fst g ++ ":" ++ show (snd g)
+showGa (g:[]) = putStrLn $ name2String (fst g) ++ ":" ++ show (snd g)
 showGa (g:gs) = do 
-    putStr $ fst g ++ ":" ++ show (snd g) ++ ", "
+    putStr $ name2String (fst g) ++ ":" ++ show (snd g) ++ ", "
     showGa gs
 
 showExpr :: Expr -> String
 showExpr U           = "()"
-showExpr (C x tau)   = x ++ ":" ++ show tau
-showExpr (V x)       = x
+showExpr (C x tau)   = name2String x ++ ":" ++ show tau
+showExpr (V x)       = name2String x
 showExpr (A m1 m2)   = exprL ++ " " ++ exprR
     where
         exprL = case m1 of
-                    L x tau m -> "(" ++ showExpr (L x tau m) ++ ")"
-                    TyL t m -> "(" ++ showExpr (TyL t m) ++ ")"
+                    L bnd -> "(" ++ showExpr (L bnd) ++ ")"
+                    TyL bnd -> "(" ++ showExpr (TyL bnd) ++ ")"
                     m         -> showExpr m
         exprR = case m2 of
                     A m1 m2   -> "(" ++ showExpr (A m1 m2) ++ ")"
-                    L x tau m -> "(" ++ showExpr (L x tau m) ++ ")"
-                    TyL t m -> "(" ++ showExpr (TyL t m) ++ ")"
+                    L bnd -> "(" ++ showExpr (L bnd) ++ ")"
+                    TyL bnd -> "(" ++ showExpr (TyL bnd) ++ ")"
                     m         -> showExpr m
-showExpr (L x tau m) = "λ" ++ x ++ ":" ++ show tau ++ "." ++ showExpr m
+showExpr (L bnd) = "λ" ++ name2String x ++ ":" ++ show tau ++ "." ++ showExpr m
+    where
+        ((x, Embed tau), m) = unsafeUnbind bnd
 showExpr (T ms)      = "{" ++ showExprs (map (\x -> showExpr x) ms) ++ "}"
     where
         showExprs []     = " **Error: The list in the Tuple is empty.** "
@@ -143,18 +147,20 @@ showExpr (Case m ms)    = "case " ++ showExpr m ++ " of " ++ showExprs (map (\(s
         showExprs []     = " **Error: The list in the Case is empty.** "
         showExprs ((s, m):[]) = s ++ " => " ++ m
         showExprs ((s, m):ss) = s ++ " => " ++ m ++ ", " ++ showExprs ss
-showExpr (TyL t m) = "Λ" ++ t ++ "." ++ showExpr m
+showExpr (TyL bnd) = "Λ" ++ name2String x ++ "." ++ showExpr m
+    where
+        (x, m) = unsafeUnbind bnd
 showExpr (TyA m tau) = exprL ++ " " ++ exprR
     where
         exprL = case m of
                     A m1 m2   -> "(" ++ showExpr (A m1 m2) ++ ")"
-                    L x tau m -> "(" ++ showExpr (L x tau m) ++ ")"
-                    TyL t m   -> "(" ++ showExpr (TyL t m) ++ ")"
+                    L bnd -> "(" ++ showExpr (L bnd) ++ ")"
+                    TyL bnd   -> "(" ++ showExpr (TyL bnd) ++ ")"
                     m         -> showExpr m
         exprR = case tau of
-                    t1 :=> t2  -> "(" ++ showType (t1 :=> t2) ++ ")"
-                    Poly t tau -> "(" ++ showType (Poly t tau) ++ ")"
-                    tau        -> showType tau
+                    Arr t1 t2 -> "(" ++ showType (Arr t1 t2) ++ ")"
+                    Poly bnd  -> "(" ++ showType (Poly bnd) ++ ")"
+                    tau       -> showType tau
 
 -- showTerm :: Expr -> String
 -- showTerm U           = "()"
