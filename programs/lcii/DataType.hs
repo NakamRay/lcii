@@ -1,6 +1,21 @@
+{-# LANGUAGE MultiParamTypeClasses
+           , TemplateHaskell
+           , ScopedTypeVariables
+           , FlexibleInstances
+           , FlexibleContexts
+           , UndecidableInstances
+#-}
+
 module DataType where
 
+import Unbound.LocallyNameless
+import Data.List
+
 type Id = String
+
+type TyName = Name Type
+type TmName = Name Expr
+
 type Decl = (Id,Type)
 type Pos = [[Int]]
 
@@ -10,26 +25,38 @@ data Type = Unit
           | Prod [Type]
           | Rec [(String, Type)]
           | Var [(String, Type)]
-          | TyVar String
-          | Poly String Type
+          | TyVar TyName
+          | Poly TyName Type
           | Failure
           deriving (Eq)
 
 data Expr = U -- Unit
-          | C Id Type -- Const
-          | V Id -- Variable
+          | C TmName Type -- Const
+          | V TmName -- Variable
           | A Expr Expr -- Application
-          | L Id Type Expr -- Abstraction
+          | L (Bind (TmName, Embed Type) Expr) -- Abstraction
           | T [Expr] -- Tuple
           | P Expr Int -- Projection
           | R [(String, Expr)] -- Record
           | F Expr String      -- Field
           | Inj String Expr Type -- allow Variant Type only
           | Case Expr [(String, Expr)]
-          | TyL String Expr -- Type Abstraction
+          | TyL (Bind TyName Expr) -- Type Abstraction
           | TyA Expr Type -- Type Application
           | N Int -- numbers to lambda term
-            deriving (Eq)
+
+$(derive [''Type, ''Expr])
+
+instance Alpha Type
+instance Alpha Expr
+
+instance Subst Expr Type where
+instance Subst Expr Expr where
+  isvar (TmVar x) = Just (SubstName x)
+  isvar _  = Nothing
+instance Subst Type Type where
+  isvar (TyVar x) = Just (SubstName x)
+  isvar _ = Nothing
 
 instance Show Type where
     show = showType
@@ -129,35 +156,35 @@ showExpr (TyA m tau) = exprL ++ " " ++ exprR
                     Poly t tau -> "(" ++ showType (Poly t tau) ++ ")"
                     tau        -> showType tau
 
-showTerm :: Expr -> String
-showTerm U           = "()"
-showTerm (V x)       = x
-showTerm (A m1 m2)   = exprL ++ " " ++ exprR
-    where
-        exprL = case m1 of
-                    L x tau m -> "(" ++ showTerm (L x tau m) ++ ")"
-                    m         -> showTerm m
-        exprR = case m2 of
-                    A m1 m2   -> "(" ++ showTerm (A m1 m2) ++ ")"
-                    L x tau m -> "(" ++ showTerm (L x tau m) ++ ")"
-                    m         -> showTerm m
-showTerm (L x tau m) = "λ" ++ x ++ "." ++ showTerm m
-showTerm (T ms)      = "{" ++ showTerms (map (\x -> showTerm x) ms) ++ "}"
-    where
-        showTerms []     = " **Error: The list in the Tuple is empty.** "
-        showTerms (s:[]) = s
-        showTerms (s:ss) = s ++ ", " ++ showTerms ss
-showTerm (P m i)     = showTerm m ++ "." ++ show i
-showTerm (R ms)      = "{" ++ showTerms (map (\(s,m') -> (s,showTerm m')) ms) ++ "}"
-    where
-        showTerms []     = " **Error: The list in the Rec is empty.** "
-        showTerms ((s, m):[]) = s ++ " = " ++ m
-        showTerms ((s, m):ss) = s ++ " = " ++ m ++ ", " ++ showTerms ss
-showTerm (F m s)     = showTerm m ++ "." ++ s
-showTerm (Inj s m tau) = "(<" ++ s ++ " = " ++ showTerm m ++ ">" ++ ")"
-showTerm (Case m ms)    = "case " ++ showTerm m ++ " of " ++ showTerms (map (\(s,m') -> (s,showTerm m')) ms)
-    where
-        showTerms []     = " **Error: The list in the Case is empty.** "
-        showTerms ((s, m):[]) = s ++ " => " ++ m
-        showTerms ((s, m):ss) = s ++ " => " ++ m ++ ", " ++ showTerms ss
-showTerm (N i) = show i
+-- showTerm :: Expr -> String
+-- showTerm U           = "()"
+-- showTerm (V x)       = x
+-- showTerm (A m1 m2)   = exprL ++ " " ++ exprR
+--     where
+--         exprL = case m1 of
+--                     L x tau m -> "(" ++ showTerm (L x tau m) ++ ")"
+--                     m         -> showTerm m
+--         exprR = case m2 of
+--                     A m1 m2   -> "(" ++ showTerm (A m1 m2) ++ ")"
+--                     L x tau m -> "(" ++ showTerm (L x tau m) ++ ")"
+--                     m         -> showTerm m
+-- showTerm (L x tau m) = "λ" ++ x ++ "." ++ showTerm m
+-- showTerm (T ms)      = "{" ++ showTerms (map (\x -> showTerm x) ms) ++ "}"
+--     where
+--         showTerms []     = " **Error: The list in the Tuple is empty.** "
+--         showTerms (s:[]) = s
+--         showTerms (s:ss) = s ++ ", " ++ showTerms ss
+-- showTerm (P m i)     = showTerm m ++ "." ++ show i
+-- showTerm (R ms)      = "{" ++ showTerms (map (\(s,m') -> (s,showTerm m')) ms) ++ "}"
+--     where
+--         showTerms []     = " **Error: The list in the Rec is empty.** "
+--         showTerms ((s, m):[]) = s ++ " = " ++ m
+--         showTerms ((s, m):ss) = s ++ " = " ++ m ++ ", " ++ showTerms ss
+-- showTerm (F m s)     = showTerm m ++ "." ++ s
+-- showTerm (Inj s m tau) = "(<" ++ s ++ " = " ++ showTerm m ++ ">" ++ ")"
+-- showTerm (Case m ms)    = "case " ++ showTerm m ++ " of " ++ showTerms (map (\(s,m') -> (s,showTerm m')) ms)
+--     where
+--         showTerms []     = " **Error: The list in the Case is empty.** "
+--         showTerms ((s, m):[]) = s ++ " => " ++ m
+--         showTerms ((s, m):ss) = s ++ " => " ++ m ++ ", " ++ showTerms ss
+-- showTerm (N i) = show i
