@@ -13,7 +13,7 @@ double x => s (s x)
 (\x -> double x) 0 -> double 0 -> s (s x)
 
 多相型λ式の自動生成
-CUI -> WUIの枠組みを作る
+CUI -> WUIの枠組みを作る(インタプリタのためのWUI作成フレームワーク)
 
 エフェクト付きλ計算λeff-calculus
 Unboundを導入

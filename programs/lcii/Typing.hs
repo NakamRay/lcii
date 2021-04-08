@@ -24,7 +24,7 @@ typing' xi ga (L bnd) = let ((x, Embed tau1), m) = unsafeUnbind bnd
 
 typing' xi ga (A m1 m2) = let tau1 = typing' xi ga m1
                               tau2 = typing' xi ga m2
-                            in if isArrowType tau1 && source tau1 == tau2
+                            in if isArrowType tau1 && source tau1 `aeq` tau2
                                then target tau1 else Failure
 
 typing' xi ga (T ms) = let taus = map (typing' xi ga) ms
@@ -44,7 +44,7 @@ typing' xi ga (F m s) = let tau = typing' xi ga m
 
 typing' xi ga (Inj s m t) = let tau = typing' xi ga m
                             in case t of
-                              Var taus -> if tau == caseTypeFind taus s
+                              Var taus -> if tau `aeq` caseTypeFind taus s
                                             then Var taus else Failure
                               t' -> Failure
 
@@ -56,10 +56,20 @@ typing' xi ga (TyL bnd) = let (a, m) = unsafeUnbind bnd
                               tau = typing' (a:xi) ga m
                           in  Poly (bind a tau)
 
+-- typing' xi ga (TyA m sig) = let tau = typing' xi ga m
+--                              in if isPolyType tau && typeTyping xi sig
+--                                 then tyAssign (polyTau tau) (polyTV tau) sig xi
+--                                 else Failure
+
 typing' xi ga (TyA m sig) = let tau = typing' xi ga m
-                             in if isPolyType tau && typeTyping xi sig
-                                then tyAssign (polyTau tau) (polyTV tau) sig xi
+                             in if typeTyping xi sig
+                                then case tau of
+                                  Poly bnd -> substBind bnd sig
+                                  otherwise -> Failure
                                 else Failure
+
+substTest = substBind (bind (string2Name "A") (Arr (TyVar (string2Name "A")) (Prod [INT, BOOL, TyVar (string2Name "A")]))) INT
+aeqTest = (Poly (bind (string2Name "A") (TyVar (string2Name "A")))) `aeq` (Poly (bind (string2Name "B") (TyVar (string2Name "B"))))
 
 typeTyping :: [TyName] -> Type -> Bool
 typeTyping xi (Arr tau1 tau2) = (typeTyping xi tau1) && (typeTyping xi tau2)
@@ -110,23 +120,23 @@ typeTyping xi tau             = True
 -- tyAssign (Var taus) name tau' bv = Var (map (\(s,x) -> (s,tyAssign x name tau' bv)) taus)
 -- tyAssign tau name tau' bv = tau
 
-getFTV :: Type -> [TyName]
-getFTV (TyVar tau)     = [tau]
-getFTV (Arr tau1 tau2) = getFTV tau1 ++ getFTV tau2
-getFTV (Poly t s)      = filter (/= t) $ getFTV s
-getFTV tau             = []
+-- getFTV :: Type -> [TyName]
+-- getFTV (TyVar tau)     = [tau]
+-- getFTV (Arr tau1 tau2) = getFTV tau1 ++ getFTV tau2
+-- getFTV (Poly t s)      = filter (/= t) $ getFTV s
+-- getFTV tau             = []
 
 -------------------------------------------------------------------------------
 -- Check Typing Error
 -------------------------------------------------------------------------------
-hasFailure :: Type -> Bool
-hasFailure (Arr tau1 tau2) = hasFailure tau1 || hasFailure tau2
-hasFailure (Prod taus)     = or $ map hasFailure taus
-hasFailure (Rec taus)      = or $ map (\(s,t) -> hasFailure t) taus
-hasFailure (Var taus)      = or $ map (\(s,t) -> hasFailure t) taus
-hasFailure (Poly s tau)    = hasFailure tau
-hasFailure Failure         = True
-hasFailure _               = False
+-- hasFailure :: Type -> Bool
+-- hasFailure (Arr tau1 tau2) = hasFailure tau1 || hasFailure tau2
+-- hasFailure (Prod taus)     = or $ map hasFailure taus
+-- hasFailure (Rec taus)      = or $ map (\(s,t) -> hasFailure t) taus
+-- hasFailure (Var taus)      = or $ map (\(s,t) -> hasFailure t) taus
+-- hasFailure (Poly s tau)    = hasFailure tau
+-- hasFailure Failure         = True
+-- hasFailure _               = False
 
 -------------------------------------------------------------------------------
 -- Utility
@@ -160,17 +170,17 @@ varList (Var taus) = taus
 
 recList (Rec taus) = taus
 
-isPolyType (Poly a tau) = True
+isPolyType (Poly bnd) = True
 isPolyType tau          = False
 
-polyTV (Poly a tau) = a
-polyTau (Poly a tau) = tau
+-- polyTV (Poly a tau) = a
+-- polyTau (Poly a tau) = tau
 
 caseType :: [TyName] -> [Decl] -> [(String, Expr)] -> [(String, Type)] -> Type -> Type
 caseType xi ga [] [] res   = res
 caseType xi ga [] taus res = Failure
 caseType xi ga ms [] res   = Failure
-caseType xi ga ((s, m):ms) ((s',tau):taus) res = if source (typing' xi ga m) == tau && target (typing' xi ga m) == res
+caseType xi ga ((s, m):ms) ((s',tau):taus) res = if source (typing' xi ga m) `aeq` tau && target (typing' xi ga m) `aeq` res
                                     then caseType xi ga ms taus res
                                     else Failure
 
