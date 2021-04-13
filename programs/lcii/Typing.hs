@@ -71,6 +71,8 @@ typing' xi ga (TyA m sig) = let tau = typing' xi ga m
 substTest = substBind (bind (string2Name "A") (Arr (TyVar (string2Name "A")) (Prod [INT, BOOL, TyVar (string2Name "A")]))) INT
 aeqTest = (Poly (bind (string2Name "A") (TyVar (string2Name "A")))) `aeq` (Poly (bind (string2Name "B") (TyVar (string2Name "B"))))
 
+typTest = typing [a] [(y, TyVar a), (z, INT)] $ A (L (bind (x, Embed INT) (V y))) (V z)
+
 typeTyping :: [TyName] -> Type -> Bool
 typeTyping xi (Arr tau1 tau2) = (typeTyping xi tau1) && (typeTyping xi tau2)
 typeTyping xi (Prod taus)     = and $ map (typeTyping xi) taus

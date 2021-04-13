@@ -2,91 +2,181 @@ module Eval where
 
 import Data.List
 import Data.Maybe
+import Data.Set as S hiding (map)
+
+import Control.Monad.Except
 
 import Typing
 import DataType
 import Coloring
-import Parser
+-- import Parser
+
+import Unbound.LocallyNameless
+import Unbound.LocallyNameless.Ops (unsafeUnbind)
+import Unbound.LocallyNameless.Name
 
 -------------------------------------------------------------------------------
 -- One step reduction
 -------------------------------------------------------------------------------
-reduction t pos = eval t [] pos (getFV t)
+reduction t pos = eval t [] pos
 
-eval :: Expr -> [Int] -> [Int] -> [Id] -> Expr
-eval (A (L x tau m1) m2) cPos rPos bv =
+redTest = runFreshM $ reduction (A (lam x INT (lam y INT (V x))) (V y)) []
+
+lam :: TmName -> Type -> Expr -> Expr
+lam x tau m = L $ bind (x, Embed tau) m
+
+subsTest :: FreshM Expr
+subsTest = return $ subst y (V z) (subst x (V y) (lam y INT (V x)))
+
+test1 :: Expr -> FreshM (Maybe Bool)
+test1 (L bnd) = do
+    ((x, Embed tau), m) <- unbind bnd
+    case m of
+        V y -> return $ Just $ isBound y
+        otherwise -> return Nothing
+
+test2 = runFreshM $ test1 (lam x INT (V x))
+
+-- type M = ExceptT String LFreshM
+eval :: Expr -> [Int] -> [Int] -> FreshM Expr
+eval (A m1 m2)    cPos rPos = do
+    m1' <- eval m1 (cPos ++ [1]) rPos
+    m2' <- eval m2 (cPos ++ [2]) rPos
+    case m1 of
+        L bnd -> do
+            ((x, Embed tau), m) <- unbind bnd
+            if cPos == rPos
+                then return $ subst x m2 m
+                else return $ A m1' m2'
+        otherwise -> return $ A m1' m2'
+eval (L bnd)  cPos rPos = do
+    ((x, Embed tau), m) <- unbind bnd
+    m' <- eval m (cPos ++ [1]) rPos
+    return $ L (bind (x, Embed tau) m')
+eval (T ms)       cPos rPos =
+    return $ T [ runFreshM $ eval (ms !! (i-1)) (cPos ++ [i]) rPos | i <- [1..length ms] ]
+eval (P (T ms) i) cPos rPos =
     if cPos == rPos
-        then assign m1 x m2 bv
-        else A (eval (L x tau m1) (cPos ++ [1]) rPos bv) (eval m2 (cPos ++ [2]) rPos bv)
-eval (A m1 m2)    cPos rPos bv = A (eval m1 (cPos ++ [1]) rPos bv) (eval m2 (cPos ++ [2]) rPos bv)
-eval (L x tau m)  cPos rPos bv = L x tau $ eval m (cPos ++ [1]) rPos (x:bv)
-eval (T ms)       cPos rPos bv = T $ [ eval (ms !! (i-1)) (cPos ++ [i]) rPos bv | i <- [1..length ms] ]
-eval (P (T ms) i) cPos rPos bv =
+        then return $ ms !! (i-1)
+        else return $ P (runFreshM $ eval (T ms) (cPos ++ [1]) rPos) i
+eval (P m i)       cPos rPos = return $ P (runFreshM $ eval m (cPos ++ [1]) rPos) i
+eval (R ms)        cPos rPos = return $ R [ (fst (ms !! (i-1)), runFreshM $ eval (snd (ms !! (i-1))) (cPos ++ [i]) rPos) | i <- [1..length ms] ]
+eval (F (R ms) s)  cPos rPos =
     if cPos == rPos
-        then ms !! (i-1)
-        else P (eval (T ms) (cPos ++ [1]) rPos bv) i
-eval (P m i)       cPos rPos bv = P (eval m (cPos ++ [1]) rPos bv) i
-eval (R ms)        cPos rPos bv = R [ (fst (ms !! (i-1)), eval (snd (ms !! (i-1))) (cPos ++ [i]) rPos bv) | i <- [1..length ms] ]
-eval (F (R ms) s)  cPos rPos bv =
+        then return $ caseFind ms s
+        else return $ F (runFreshM $ eval (R ms) (cPos ++ [1]) rPos) s
+eval (F m s)       cPos rPos = return $ F (runFreshM $ eval m (cPos ++ [1]) rPos) s
+eval (Inj s m tau) cPos rPos = return $ Inj s (runFreshM $ eval m (cPos ++ [1]) rPos) tau
+eval (Case (Inj s m tau) ms) cPos rPos =
     if cPos == rPos
-        then caseFind ms s
-        else F (eval (R ms) (cPos ++ [1]) rPos bv) s
-eval (F m s)       cPos rPos bv = F (eval m (cPos ++ [1]) rPos bv) s
-eval (Inj s m tau) cPos rPos bv = Inj s (eval m (cPos ++ [1]) rPos bv) tau
-eval (Case (Inj s m tau) ms) cPos rPos bv =
+        then return $ A (caseFind ms s) m
+        else return $ Case (runFreshM $ eval (Inj s m tau) (cPos ++ [1]) rPos) [ ((fst (ms !! (i-1))), runFreshM $ eval (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) rPos) | i <- [1..length ms] ]
+eval (Case m ms) cPos rPos = return $ Case (runFreshM $ eval m (cPos ++ [1]) rPos) [ (fst (ms !! (i-1)), runFreshM $ eval (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) rPos) | i <- [1..length ms] ]
+eval (TyL bnd)   cPos rPos = return $ TyL (bind t (runFreshM $ eval m (cPos ++ [1]) rPos))
+    where
+        (t, m) = unsafeUnbind bnd
+eval (TyA (TyL bnd) tau) cPos rPos =
     if cPos == rPos
-        then A (caseFind ms s) m
-        else Case (eval (Inj s m tau) (cPos ++ [1]) rPos bv) [ ((fst (ms !! (i-1))), eval (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) rPos bv) | i <- [1..length ms] ]
-eval (Case m ms) cPos rPos bv = Case (eval m (cPos ++ [1]) rPos bv) [ (fst (ms !! (i-1)), eval (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) rPos bv) | i <- [1..length ms] ]
-eval (TyL t m)   cPos rPos bv = TyL t $ eval m (cPos ++ [1]) rPos bv
-eval (TyA (TyL t m) tau) cPos rPos bv =
-    if cPos == rPos
-        then tySubst m t tau []
-        else TyA (eval (TyL t m) (cPos ++ [1]) rPos bv) tau
-eval (TyA m tau)   cPos rPos bv = TyA (eval m (cPos ++ [1]) rPos bv) tau
-eval t cPos rPos bv = t
+        then return $ substBind bnd tau
+        else return $ TyA (runFreshM $ eval (TyL bnd) (cPos ++ [1]) rPos) tau
+    where
+        (t, m) = unsafeUnbind bnd
+eval (TyA m tau)   cPos rPos = return $ TyA (runFreshM $ eval m (cPos ++ [1]) rPos) tau
+eval t cPos rPos = return $ t
 
 caseFind :: [(String, Expr)] -> String -> Expr
 caseFind ((s, m):[]) s' = if s == s' then m else U
 caseFind ((s, m):ss) s' = if s == s' then m else caseFind ss s'
 
-assign :: Expr -> String -> Expr -> [Id] -> Expr
-assign (C x tau)   name am bv = C x tau
-assign (V x)       name am bv = if x == name then am else V x
-assign (A m1 m2)   name am bv = A (assign m1 name am bv) (assign m2 name am bv)
-assign (L x tau m) name am bv = if x /= name && notElem x (getFV am)
-                               then L x tau $ assign m name am (x:bv)
-                               else if x /= name && elem x (getFV am)
-                               then L new tau (assign (assign m x (V new) bv) name am (new:bv))
-                               else L x tau m
-                               where
-                                   fresh = filter (\x -> notElem x (getFV m ++ getFV am)) bound
-                                   new = (filter (\x -> notElem x bv) fresh) !! 0
-assign (T ms)      name am bv = T $ map (\x -> assign x name am bv) ms
-assign (P m i)     name am bv = P (assign m name am bv) i
-assign (R ms)      name am bv = R (map (\(s,m') -> (s, assign m' name am bv)) ms)
-assign (F m s)     name am bv = F (assign m name am bv) s
-assign (Inj s m tau) name am bv = Inj s (assign m name am bv) tau
-assign (Case m ms) name am bv = Case (assign m name am bv) (map (\(s,m') -> (s, assign m' name am bv)) ms)
-assign (TyL t m)   name am bv = TyL t $ assign m name am bv
-assign (TyA m t)   name am bv = TyA (assign m name am bv) t
-assign e           name am bv = e
+-- avoidCapture
+ac :: Expr -> FreshM Expr
+ac (C x tau)   = return $ C x tau
+ac (V x)       = return $ V x
+ac (A m1 m2)   = return $ A (runFreshM $ ac m1) (runFreshM $ ac m2)
+ac (L bnd) =
+    let
+        ((x, Embed tau), m) = unsafeUnbind bnd
+        new = runFreshM $ fresh (string2Name "X")
+    in
+        if notElem (name2String x) (map name2String (fv m :: [TmName]))
+        then return $ L (bind (x, Embed tau) (runFreshM $ ac m))
+        else return $ L (bind (new, Embed tau) (subst x (V new) m))
+ac (T ms)        = return $ T $ map (\x -> runFreshM $ ac x) ms
+ac (P m i)       = return $ P (runFreshM $ ac m) i
+ac (R ms)        = return $ R (map (\(s,m') -> (s, runFreshM $ ac m')) ms)
+ac (F m s)       = return $ F (runFreshM $ ac m) s
+ac (Inj s m tau) = return $ Inj s (runFreshM $ ac m) tau
+ac (Case m ms)   = return $ Case (runFreshM $ ac m) (map (\(s,m') -> (s, runFreshM $ ac m')) ms)
+ac (TyL bnd)     = return $ TyL (bind t (runFreshM $ ac m))
+    where
+        (t, m) = unsafeUnbind bnd
+ac (TyA m t)   = return $ TyA (runFreshM $ ac m) t
+ac e           = return $ e
 
-getFV :: Expr -> [Id]
-getFV (C x tau)     = []
-getFV (V x)         = [x]
-getFV (A m1 m2)     = getFV m1 ++ getFV m2
-getFV (L x tau m)   = filter (/= x) $ getFV m
-getFV (T ms)        = concat $ map getFV ms
-getFV (P m i)       = getFV m
-getFV (R ms)        = concat (map getFV (map snd ms))
-getFV (F m s)       = getFV m
-getFV (Inj s m tau) = getFV m
-getFV (Case m ms)   = getFV m ++ concat (map getFV (map snd ms))
-getFV (TyL t m)     = getFV m
-getFV (TyA m t)     = getFV m
-getFV m             = []
+-- assign :: Expr -> String -> Expr -> [Id] -> Expr
+-- assign (C x tau)   name am bv = C x tau
+-- assign (V x)       name am bv = if x == name then am else V x
+-- assign (A m1 m2)   name am bv = A (assign m1 name am bv) (assign m2 name am bv)
+-- assign (L x tau m) name am bv = if x /= name && notElem x (getFV am)
+--                                then L x tau $ assign m name am (x:bv)
+--                                else if x /= name && elem x (getFV am)
+--                                then L new tau (assign (assign m x (V new) bv) name am (new:bv))
+--                                else L x tau m
+--                                where
+--                                    fresh = filter (\x -> notElem x (getFV m ++ getFV am)) bound
+--                                    new = (filter (\x -> notElem x bv) fresh) !! 0
+-- assign (T ms)      name am bv = T $ map (\x -> assign x name am bv) ms
+-- assign (P m i)     name am bv = P (assign m name am bv) i
+-- assign (R ms)      name am bv = R (map (\(s,m') -> (s, assign m' name am bv)) ms)
+-- assign (F m s)     name am bv = F (assign m name am bv) s
+-- assign (Inj s m tau) name am bv = Inj s (assign m name am bv) tau
+-- assign (Case m ms) name am bv = Case (assign m name am bv) (map (\(s,m') -> (s, assign m' name am bv)) ms)
+-- assign (TyL t m)   name am bv = TyL t $ assign m name am bv
+-- assign (TyA m t)   name am bv = TyA (assign m name am bv) t
+-- assign e           name am bv = e
 
+assign :: Expr -> TmName -> Expr -> FreshM Expr
+assign (C x tau)   name am = return $ C x tau
+assign (V x)       name am = if x == name then return $ am else return $ V x
+assign (A m1 m2)   name am = return $ A (runFreshM $ assign m1 name am) (runFreshM $ assign m2 name am)
+assign (L bnd) name am =
+    let
+        ((x, Embed tau), m) = unsafeUnbind bnd
+        new = runFreshM $ fresh x
+    in
+        if x /= name && notElem x (fv am :: [TmName])
+        then return $ L (bind (x, Embed tau) (runFreshM $ assign m name am))
+        else if x /= name && elem x (fv am :: [TmName])
+        then return $ L (bind (new, Embed tau) (runFreshM $ assign (runFreshM $ assign m x (V new)) name am))
+        else return $ L bnd
+assign (T ms)        name am = return $ T $ map (\x -> runFreshM $ assign x name am) ms
+assign (P m i)       name am = return $ P (runFreshM $ assign m name am) i
+assign (R ms)        name am = return $ R (map (\(s,m') -> (s, runFreshM $ assign m' name am)) ms)
+assign (F m s)       name am = return $ F (runFreshM $ assign m name am) s
+assign (Inj s m tau) name am = return $ Inj s (runFreshM $ assign m name am) tau
+assign (Case m ms)   name am = return $ Case (runFreshM $ assign m name am) (map (\(s,m') -> (s, runFreshM $ assign m' name am)) ms)
+assign (TyL bnd)     name am = return $ TyL (bind t (runFreshM $ assign m name am))
+    where
+        (t, m) = unsafeUnbind bnd
+assign (TyA m t)   name am = return $ TyA (runFreshM $ assign m name am) t
+assign e           name am = return $ e
+
+-- getFV :: Expr -> [Id]
+-- getFV (C x tau)     = []
+-- getFV (V x)         = [x]
+-- getFV (A m1 m2)     = getFV m1 ++ getFV m2
+-- getFV (L x tau m)   = filter (/= x) $ getFV m
+-- getFV (T ms)        = concat $ map getFV ms
+-- getFV (P m i)       = getFV m
+-- getFV (R ms)        = concat (map getFV (map snd ms))
+-- getFV (F m s)       = getFV m
+-- getFV (Inj s m tau) = getFV m
+-- getFV (Case m ms)   = getFV m ++ concat (map getFV (map snd ms))
+-- getFV (TyL t m)     = getFV m
+-- getFV (TyA m t)     = getFV m
+-- getFV m             = []
+
+{--
 -------------------------------------------------------------------------------
 -- α-conversion
 -------------------------------------------------------------------------------
@@ -246,6 +336,8 @@ pRC isU m pos cPos rPos = coloring (elemIndex rPos pos) $ pRCshow isU m
 pRCshow :: Bool -> Expr -> String
 pRCshow isU m = if isU then showTerm m else show m
 
+
+--}
 -------------------------------------------------------------------------------
 -- Position
 -------------------------------------------------------------------------------
@@ -253,36 +345,46 @@ pos :: Expr -> Pos
 pos (C x tau)     = [ [] ]
 pos (V x)         = [ [] ]
 pos (A m1 m2)     = [] : [ 1 : ps | ps <- pos m1] ++ [ 2 : ps | ps <- pos m2]
-pos (L x tau m)   = [] : [ 1 : ps | ps <- pos m]
+pos (L bnd)   = [] : [ 1 : ps | ps <- pos m]
+    where
+        ((x, Embed tau), m) = unsafeUnbind bnd
 pos (T ms)        = [] : [ i : ps | i <- [1..length ms], ps <- pos (ms !! (i-1))]
 pos (P m i)       = [] : [ 1 : ps | ps <- pos m]
 pos (R ms)        = [] : [ i : ps | i <- [1..length ms], ps <- pos (snd (ms !! (i-1)))]
 pos (F m s)       = [] : [ 1 : ps | ps <- pos m]
 pos (Inj s m tau) = [] : [ 1 : ps | ps <- pos m]
 pos (Case m ms)   = [] : [ 1 : ps | ps <- pos m] ++ [ 2 : i : ps | i <- [1..length ms], ps <- pos (snd (ms !! (i-1)))]
-pos (TyL t m)     = [] : [ 1 : ps | ps <- pos m]
+pos (TyL bnd)     = [] : [ 1 : ps | ps <- pos m]
+    where
+        (t, m) = unsafeUnbind bnd
 pos (TyA m tau)   = [] : [ 1 : ps | ps <- pos m]
 pos t             = [ [] ]
 
 getExpr :: Expr -> [Int] -> [Int] -> [Expr]
 getExpr (A t1 t2)     cPos target = targetPos cPos target (A t1 t2) (getExpr t1 (cPos ++ [1]) target ++ getExpr t2 (cPos ++ [2]) target)
-getExpr (L x tau m)   cPos target = targetPos cPos target (L x tau m) (getExpr m (cPos ++ [1]) target)
+getExpr (L bnd)       cPos target = targetPos cPos target (L bnd) (getExpr m (cPos ++ [1]) target)
+    where
+        ((x, Embed tau), m) = unsafeUnbind bnd
 getExpr (T ms)        cPos target = targetPos cPos target (T ms) (concat [ getExpr (ms !! (i-1)) (cPos ++ [i]) target | i <- [1..length ms] ])
 getExpr (P m i)       cPos target = targetPos cPos target (P m i) (getExpr m (cPos ++ [1]) target)
 getExpr (R ms)        cPos target = targetPos cPos target (R ms) (concat [ getExpr (snd (ms !! (i-1))) (cPos ++ [i]) target | i <- [1..length ms] ])
 getExpr (F m s)       cPos target = targetPos cPos target (F m s) (getExpr m (cPos ++ [1]) target)
 getExpr (Inj s m tau) cPos target = targetPos cPos target (Inj s m tau) (getExpr m (cPos ++ [1]) target)
 getExpr (Case m ms)   cPos target = targetPos cPos target (Case m ms) (getExpr m (cPos ++ [1]) target ++ concat [ getExpr (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) target | i <- [1..length ms] ])
-getExpr (TyL t m)     cPos target = targetPos cPos target (TyL t m) (getExpr m (cPos ++ [1]) target)
+getExpr (TyL bnd)     cPos target = targetPos cPos target (TyL bnd) (getExpr m (cPos ++ [1]) target)
+    where
+        (t, m) = unsafeUnbind bnd
 getExpr (TyA m t)     cPos target = targetPos cPos target (TyA m t) (getExpr m (cPos ++ [1]) target)
 getExpr m             cPos target = targetPos cPos target m []
 
 targetPos cPos target t ts = if cPos == target then [t] else ts
 
 getRedexPos :: Expr -> [Int] -> Pos
-getRedexPos (A (L x tau t1) t2) cPos = cPos : getRedexPos (L x tau t1) (cPos ++ [1]) ++ getRedexPos t2 (cPos ++ [2])
+getRedexPos (A (L bnd) t2) cPos = cPos : getRedexPos (L bnd) (cPos ++ [1]) ++ getRedexPos t2 (cPos ++ [2])
 getRedexPos (A t1 t2)     cPos = getRedexPos t1 (cPos ++ [1]) ++ getRedexPos t2 (cPos ++ [2])
-getRedexPos (L x tau m)   cPos = getRedexPos m (cPos ++ [1])
+getRedexPos (L bnd)   cPos = getRedexPos m (cPos ++ [1])
+    where
+        ((x, Embed tau), m) = unsafeUnbind bnd
 getRedexPos (T ms)        cPos = concat [ getRedexPos (ms !! (i-1)) (cPos ++ [i]) | i <- [1..length ms] ]
 getRedexPos (P (T ms) i)  cPos = cPos : getRedexPos (T ms) (cPos ++ [1])
 getRedexPos (P m i)       cPos = getRedexPos m (cPos ++ [1])
@@ -292,7 +394,9 @@ getRedexPos (F m s)       cPos = getRedexPos m (cPos ++ [1])
 getRedexPos (Inj s m tau) cPos = getRedexPos m (cPos ++ [1])
 getRedexPos (Case (Inj s m tau) ms) cPos = cPos : getRedexPos (Inj s m tau) (cPos ++ [1]) ++ concat [ getRedexPos (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) | i <- [1..length ms] ]
 getRedexPos (Case m ms) cPos = getRedexPos m (cPos ++ [1]) ++ concat [ getRedexPos (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) | i <- [1..length ms] ]
-getRedexPos (TyL t m)   cPos = getRedexPos m (cPos ++ [1])
-getRedexPos (TyA (TyL t m) tau) cPos = cPos : getRedexPos (TyL t m) (cPos ++ [1])
+getRedexPos (TyL bnd)   cPos = getRedexPos m (cPos ++ [1])
+    where
+        (t, m) = unsafeUnbind bnd
+getRedexPos (TyA (TyL bnd) tau) cPos = cPos : getRedexPos (TyL bnd) (cPos ++ [1])
 getRedexPos (TyA m tau) cPos = getRedexPos m (cPos ++ [1])
 getRedexPos m cPos = []

@@ -32,6 +32,20 @@ data Exp = Var (Name Exp)
          | App Exp Exp
   deriving Show
 
+-- instance Show Exp where
+--     show = runFreshM . showExp
+
+-- showExp :: Exp -> FreshM String
+-- showExp (Var x) = return $ name2String x
+-- showExp (Lam bnd) = do
+--   (x, e) <- unbind bnd
+--   showE <- showExp e
+--   return $ "λ" ++ name2String x ++ "." ++ showE
+-- showExp (App e1 e2) = do
+--   showE1 <- showExp e1
+--   showE2 <- showExp e2
+--   return $ "(" ++ showE1 ++ " " ++ showE2 ++ ")"
+
 -- Use RepLib to derive representation types
 $(derive [''Exp])
 
@@ -76,17 +90,21 @@ red (App e1 e2) = do
   case e1' of
     -- look for a beta-reduction
     Lam bnd -> do
-    --    (x, e1'') <- unbind bnd
-    --    return $ subst x e2' e1''
-      return $ substBind bnd e2'
+       (x, e1'') <- unbind bnd
+       return $ subst x e2' e1''
+      -- return $ substBind bnd e2'
     otherwise -> return $ App e1' e2'
+-- red (Lam bnd) = do
+--    (x, e) <- unbind bnd
+--    e' <- red e
+--    case e of
+--      -- look for an eta-reduction
+--      App e1 (Var y) | y == x && x `S.notMember` fv e1 -> return e1
+--      otherwise -> return (Lam (bind x e'))
 red (Lam bnd) = do
-   (x, e) <- unbind bnd
-   e' <- red e
-   case e of
-     -- look for an eta-reduction
-     App e1 (Var y) | y == x && x `S.notMember` fv e1 -> return e1
-     otherwise -> return (Lam (bind x e'))
+  (x, e) <- unbind bnd
+  e' <- red e
+  return (Lam (bind x e'))
 red (Var x) = return $ (Var x)
 
 

@@ -32,3 +32,6 @@ rho : a |-> Char, b |-> Int
 
 
 map :  (INT -> INT) -> (forall a.b. [a] -> [b])
+
+Permutation : how the variables were renamed
+名前から名前への双射関数で、名前の有限集合以外のすべての集合では恒等式となるもの

@@ -29,6 +29,7 @@ data Type = Unit
           | TyVar TyName
           | Poly (Bind TyName Type)
           | Failure
+  deriving Show
 
 data Expr = U -- Unit
           | C TmName Type -- Const
@@ -44,6 +45,7 @@ data Expr = U -- Unit
           | TyL (Bind TyName Expr) -- Type Abstraction
           | TyA Expr Type -- Type Application
           | N Int -- numbers to lambda term
+  deriving Show
 
 $(derive [''Type, ''Expr])
 
@@ -51,22 +53,33 @@ instance Alpha Type
 instance Alpha Expr
 
 instance Subst Expr Type where
+instance Subst Type Expr where
 instance Subst Expr Expr where
-  isvar (V x) = Just (SubstName x)
-  isvar _  = Nothing
+    isvar (V x) = Just (SubstName x)
+    isvar _  = Nothing
 instance Subst Type Type where
-  isvar (TyVar x) = Just (SubstName x)
-  isvar _ = Nothing
+    isvar (TyVar x) = Just (SubstName x)
+    isvar _ = Nothing
 
-instance Show Type where
-    show = showType
+-- instance Show Type where
+--     show = showType
 
-instance Show Expr where
-    show = showExpr
+-- instance Show Expr where
+--     show = showExpr
 
 -- Names of bound variables
 bound = ["x","y","z","u","v","w"] ++ map (:[]) ['a'..'t']
 tyBound = map (:[]) ['A'..'Z']
+
+x :: TmName
+y :: TmName
+z :: TmName
+(x,y,z) = (string2Name "x", string2Name "y", string2Name "z")
+
+a :: TyName
+b :: TyName
+c :: TyName
+(a,b,c) = (string2Name "a", string2Name "b", string2Name "c")
 
 showType :: Type -> String
 showType Unit        = "Unit"
