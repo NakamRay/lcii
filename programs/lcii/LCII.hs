@@ -9,6 +9,8 @@ import DataType
 import Coloring
 import Parser
 
+import Unbound.LocallyNameless
+
 -------------------------------------------------------------------------------
 -- Lambda Calculus Interactive Intepreter
 -------------------------------------------------------------------------------
@@ -61,12 +63,12 @@ lciiCmd cmd = do
         putStrLn "* Error *"
         return 0
 
-ii :: [String] -> [Decl] -> Expr -> IO ()
+ii :: [TyName] -> [Decl] -> Expr -> IO ()
 ii xi ga t = do
     let occ = getRedexPos t []
     putStrLn ""
     printWithColor False t
-    if hasFailure $ typing xi ga t
+    if runFreshM $ hasFailure $ typing xi ga t
     then do
         putStrLn "Typing Error"
     else do
@@ -88,14 +90,14 @@ ii xi ga t = do
                     putStrLn $ "The maximum redex number is " ++ show (length occ)
                     ii xi ga t
                 else do
-                    let alpha = getAlpha t [] (occ !! idx) (getFV t)
-                    if alpha == []
-                    then do putStr ""
-                    else do
-                        putStrLn ""
-                        putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
-                        putStrLn ""
-                    ii xi ga $ reduction t (occ !! idx)
+                    -- let alpha = getAlpha t [] (occ !! idx) (getFV t)
+                    -- if alpha == []
+                    -- then do putStr ""
+                    -- else do
+                    --     putStrLn ""
+                    --     putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
+                    --     putStrLn ""
+                    ii xi ga $ runFreshM $ reduction t (occ !! idx)
 
 iiUntyped :: Expr -> IO ()
 iiUntyped term = do
@@ -121,14 +123,14 @@ iiUntyped term = do
                 putStrLn $ "The maximum redex number is " ++ show (length occ)
                 iiUntyped t
             else do
-                let alpha = getAlpha t [] (occ !! idx) (getFV t)
-                if alpha == []
-                then do putStr ""
-                else do
-                    putStrLn ""
-                    putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
-                    putStrLn ""
-                iiUntyped $ reduction t (occ !! idx)
+                -- let alpha = getAlpha t [] (occ !! idx) (getFV t)
+                -- if alpha == []
+                -- then do putStr ""
+                -- else do
+                --     putStrLn ""
+                --     putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
+                --     putStrLn ""
+                iiUntyped $ runFreshM $ reduction t (occ !! idx)
 
 -------------------------------------------------------------------------------
 -- Utility

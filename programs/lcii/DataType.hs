@@ -17,7 +17,7 @@ type Id = String
 type TyName = Name Type
 type TmName = Name Expr
 
-type Decl = (TmName,Type)
+type Decl = (TmName, Type)
 type Pos = [[Int]]
 
 data Type = Unit
@@ -175,35 +175,37 @@ showExpr (TyA m tau) = exprL ++ " " ++ exprR
                     Poly bnd  -> "(" ++ showType (Poly bnd) ++ ")"
                     tau       -> showType tau
 
--- showTerm :: Expr -> String
--- showTerm U           = "()"
--- showTerm (V x)       = x
--- showTerm (A m1 m2)   = exprL ++ " " ++ exprR
---     where
---         exprL = case m1 of
---                     L x tau m -> "(" ++ showTerm (L x tau m) ++ ")"
---                     m         -> showTerm m
---         exprR = case m2 of
---                     A m1 m2   -> "(" ++ showTerm (A m1 m2) ++ ")"
---                     L x tau m -> "(" ++ showTerm (L x tau m) ++ ")"
---                     m         -> showTerm m
--- showTerm (L x tau m) = "λ" ++ x ++ "." ++ showTerm m
--- showTerm (T ms)      = "{" ++ showTerms (map (\x -> showTerm x) ms) ++ "}"
---     where
---         showTerms []     = " **Error: The list in the Tuple is empty.** "
---         showTerms (s:[]) = s
---         showTerms (s:ss) = s ++ ", " ++ showTerms ss
--- showTerm (P m i)     = showTerm m ++ "." ++ show i
--- showTerm (R ms)      = "{" ++ showTerms (map (\(s,m') -> (s,showTerm m')) ms) ++ "}"
---     where
---         showTerms []     = " **Error: The list in the Rec is empty.** "
---         showTerms ((s, m):[]) = s ++ " = " ++ m
---         showTerms ((s, m):ss) = s ++ " = " ++ m ++ ", " ++ showTerms ss
--- showTerm (F m s)     = showTerm m ++ "." ++ s
--- showTerm (Inj s m tau) = "(<" ++ s ++ " = " ++ showTerm m ++ ">" ++ ")"
--- showTerm (Case m ms)    = "case " ++ showTerm m ++ " of " ++ showTerms (map (\(s,m') -> (s,showTerm m')) ms)
---     where
---         showTerms []     = " **Error: The list in the Case is empty.** "
---         showTerms ((s, m):[]) = s ++ " => " ++ m
---         showTerms ((s, m):ss) = s ++ " => " ++ m ++ ", " ++ showTerms ss
+showTerm :: Expr -> String
+showTerm U           = "()"
+showTerm (V x)       = name2String x
+showTerm (A m1 m2)   = exprL ++ " " ++ exprR
+    where
+        exprL = case m1 of
+                    L bnd -> "(" ++ showTerm (L bnd) ++ ")"
+                    m         -> showTerm m
+        exprR = case m2 of
+                    A m1 m2   -> "(" ++ showTerm (A m1 m2) ++ ")"
+                    L bnd -> "(" ++ showTerm (L bnd) ++ ")"
+                    m         -> showTerm m
+showTerm (L bnd)     = "λ" ++ name2String x ++ "." ++ showTerm m
+    where
+        ((x, Embed tau), m) = unsafeUnbind bnd
+showTerm (T ms)      = "{" ++ showTerms (map (\x -> showTerm x) ms) ++ "}"
+    where
+        showTerms []     = " **Error: The list in the Tuple is empty.** "
+        showTerms (s:[]) = s
+        showTerms (s:ss) = s ++ ", " ++ showTerms ss
+showTerm (P m i)     = showTerm m ++ "." ++ show i
+showTerm (R ms)      = "{" ++ showTerms (map (\(s,m') -> (s,showTerm m')) ms) ++ "}"
+    where
+        showTerms []     = " **Error: The list in the Rec is empty.** "
+        showTerms ((s, m):[]) = s ++ " = " ++ m
+        showTerms ((s, m):ss) = s ++ " = " ++ m ++ ", " ++ showTerms ss
+showTerm (F m s)     = showTerm m ++ "." ++ s
+showTerm (Inj s m tau) = "(<" ++ s ++ " = " ++ showTerm m ++ ">" ++ ")"
+showTerm (Case m ms)    = "case " ++ showTerm m ++ " of " ++ showTerms (map (\(s,m') -> (s,showTerm m')) ms)
+    where
+        showTerms []     = " **Error: The list in the Case is empty.** "
+        showTerms ((s, m):[]) = s ++ " => " ++ m
+        showTerms ((s, m):ss) = s ++ " => " ++ m ++ ", " ++ showTerms ss
 -- showTerm (N i) = show i

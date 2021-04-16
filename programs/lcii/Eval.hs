@@ -4,6 +4,7 @@ import Data.List
 import Data.Maybe
 import Data.Set as S hiding (map)
 
+import Control.Monad
 import Control.Monad.Except
 
 import Typing
@@ -53,20 +54,33 @@ eval (L bnd)  cPos rPos = do
     ((x, Embed tau), m) <- unbind bnd
     m' <- eval m (cPos ++ [1]) rPos
     return $ L (bind (x, Embed tau) m')
-eval (T ms)       cPos rPos =
+eval (T ms)       cPos rPos = do
+    -- let
+    --     evalMap [] i cPos rPos = []
+    --     evalMap (m:ms) i cPos rPos = eval m (cPos ++ [i+1]) rPos : evalMap ms (i+1) cPos rPos
     return $ T [ runFreshM $ eval (ms !! (i-1)) (cPos ++ [i]) rPos | i <- [1..length ms] ]
 eval (P (T ms) i) cPos rPos =
     if cPos == rPos
         then return $ ms !! (i-1)
-        else return $ P (runFreshM $ eval (T ms) (cPos ++ [1]) rPos) i
-eval (P m i)       cPos rPos = return $ P (runFreshM $ eval m (cPos ++ [1]) rPos) i
+        else do
+            ms' <- eval (T ms) (cPos ++ [1]) rPos
+            return $ P ms' i
+eval (P m i)       cPos rPos = do
+    m' <- eval m (cPos ++ [1]) rPos
+    return $ P m' i
 eval (R ms)        cPos rPos = return $ R [ (fst (ms !! (i-1)), runFreshM $ eval (snd (ms !! (i-1))) (cPos ++ [i]) rPos) | i <- [1..length ms] ]
 eval (F (R ms) s)  cPos rPos =
     if cPos == rPos
         then return $ caseFind ms s
-        else return $ F (runFreshM $ eval (R ms) (cPos ++ [1]) rPos) s
-eval (F m s)       cPos rPos = return $ F (runFreshM $ eval m (cPos ++ [1]) rPos) s
-eval (Inj s m tau) cPos rPos = return $ Inj s (runFreshM $ eval m (cPos ++ [1]) rPos) tau
+        else do
+            ms' <- eval (R ms) (cPos ++ [1]) rPos
+            return $ F ms' s
+eval (F m s)       cPos rPos = do
+    m' <- eval m (cPos ++ [1]) rPos
+    return $ F m' s
+eval (Inj s m tau) cPos rPos = do
+    m' <- eval m (cPos ++ [1]) rPos
+    return $ Inj s m' tau
 eval (Case (Inj s m tau) ms) cPos rPos =
     if cPos == rPos
         then return $ A (caseFind ms s) m
@@ -161,6 +175,8 @@ assign (TyL bnd)     name am = return $ TyL (bind t (runFreshM $ assign m name a
 assign (TyA m t)   name am = return $ TyA (runFreshM $ assign m name am) t
 assign e           name am = return $ e
 
+{--
+
 -- getFV :: Expr -> [Id]
 -- getFV (C x tau)     = []
 -- getFV (V x)         = [x]
@@ -176,7 +192,6 @@ assign e           name am = return $ e
 -- getFV (TyA m t)     = getFV m
 -- getFV m             = []
 
-{--
 -------------------------------------------------------------------------------
 -- α-conversion
 -------------------------------------------------------------------------------
@@ -225,28 +240,34 @@ getA (Inj s m tau) name t bv = getA m name t bv
 getA (Case m ms)   name t bv = getA m name t bv ++ concat (map (\(s,m') -> getA m' name t bv) ms)
 getA m             name t bv = []
 
+--}
+
 -------------------------------------------------------------------------------
 -- Numbers to Lambda Term
 -------------------------------------------------------------------------------
 n2l :: Expr -> Expr
 n2l (A m1 m2) = A (n2l m1) (n2l m2)
-n2l (L x tau m) = L x tau (n2l m)
+n2l (L bnd) = L (bind (x, Embed tau) (n2l m))
+    where
+        ((x, Embed tau), m) = unsafeUnbind bnd
 n2l (T ms) = T (map n2l ms)
 n2l (P m i) = P (n2l m) i
 n2l (R rs) = R (map (\(s,m) -> (s, n2l m)) rs)
 n2l (F m s) = F (n2l m) s
 n2l (Inj s m tau) = Inj s (n2l m) tau
 n2l (Case m ms) = Case (n2l m) (map (\(s,m) -> (s, n2l m)) ms)
-n2l (TyL s m) = TyL s (n2l m)
+n2l (TyL bnd) = TyL (bind s (n2l m))
+    where
+        (s, m) = unsafeUnbind bnd
 n2l (TyA m tau) = TyA (n2l m) tau
-n2l (N i) = L "f" Unit $ L "x" Unit $ encN i
+n2l (N i) = L (bind ((string2Name "f"), Embed Unit) (L  (bind (string2Name "x", Embed Unit) (encN i))))
 n2l m = m
 
 encN :: Int -> Expr
-encN 0 = V "x"
-encN i = A (V "f") (encN (i-1))
+encN 0 = V $ string2Name "x"
+encN i = A (V $ string2Name "f") (encN (i-1))
 
-succ = parseExp "λn:UNIT.λf:UNIT.λx:UNIT.f (n f x)"
+-- succ = parseExp "λn:UNIT.λf:UNIT.λx:UNIT.f (n f x)"
 
 -------------------------------------------------------------------------------
 -- Show
@@ -269,25 +290,33 @@ printWithColor isU t = putStrLn $ pRC isU t (getRedexPos t []) [] []
 pRC :: Bool -> Expr -> Pos -> [Int] -> [Int] -> String
 pRC isU (C x tau) pos cPos rPos = coloring (elemIndex rPos pos) $ pRCshow isU (C x tau)
 pRC isU (V x)     pos cPos rPos = coloring (elemIndex rPos pos) $ pRCshow isU (V x)
-pRC isU (A (L x tau t1) t2) pos cPos rPos = coloring (elemIndex cPos pos) "(" ++ pRC isU (L x tau t1) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ") " ++ exprM2
+pRC isU (A (L bnd) t2) pos cPos rPos = coloring (elemIndex cPos pos) "(" ++ pRC isU (L bnd) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ") " ++ exprM2
     where
         exprM2 = case t2 of
                     A m1 m2   -> coloring (elemIndex cPos pos) "(" ++ pRC isU (A m1 m2) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
-                    L x tau t -> coloring (elemIndex cPos pos) "(" ++ pRC isU (L x tau t) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
-                    TyL t m   -> coloring (elemIndex cPos pos) "(" ++ pRC isU (TyL t m) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")"
+                    L bnd     -> coloring (elemIndex cPos pos) "(" ++ pRC isU (L bnd) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")" 
+                    TyL bnd   -> coloring (elemIndex cPos pos) "(" ++ pRC isU (TyL bnd) pos (cPos ++ [2]) cPos ++ coloring (elemIndex cPos pos) ")"
                     m         -> pRC isU m pos (cPos ++ [2]) cPos
 pRC isU (A t1 t2) pos cPos rPos = exprL ++ " " ++ exprR
     where
         exprL = case t1 of
-                    L x tau t -> coloring (elemIndex rPos pos) "(" ++ pRC isU (L x tau t) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")" 
-                    TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (TyL t m) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    L bnd     -> coloring (elemIndex rPos pos) "(" ++ pRC isU (L bnd) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")" 
+                    TyL bnd   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (TyL bnd) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
                     m         -> pRC isU m pos (cPos ++ [1]) rPos
         exprR = case t2 of
                     A m1 m2   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (A m1 m2) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    L x tau t -> coloring (elemIndex rPos pos) "(" ++ pRC isU (L x tau t) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (TyL t m) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    L bnd     -> coloring (elemIndex rPos pos) "(" ++ pRC isU (L bnd) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    TyL bnd   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (TyL bnd) pos (cPos ++ [2]) rPos ++ coloring (elemIndex rPos pos) ")"
                     m         -> pRC isU m pos (cPos ++ [2]) rPos
-pRC isU (L x tau t) pos cPos rPos = coloring (elemIndex rPos pos) "λ" ++ coloring (elemIndex rPos pos) x ++ (if isU then "" else coloring (elemIndex rPos pos) ":" ++ coloring (elemIndex rPos pos) (show tau)) ++ coloring (elemIndex rPos pos) "." ++ pRC isU t pos (cPos ++ [1]) rPos
+pRC isU (L bnd) pos cPos rPos =
+    coloring (elemIndex rPos pos) "λ" ++
+    coloring (elemIndex rPos pos) (name2String x) ++
+    (if isU then "" else coloring (elemIndex rPos pos) ":" ++
+    coloring (elemIndex rPos pos) (show tau)) ++
+    coloring (elemIndex rPos pos) "." ++
+    pRC isU m pos (cPos ++ [1]) rPos
+    where
+        ((x, Embed tau), m) = unsafeUnbind bnd
 pRC isU (T ts)      pos cPos rPos = coloring (elemIndex rPos pos) "{" ++ pRCT ts pos cPos rPos 1 ++ coloring (elemIndex rPos pos) "}"
     where
         pRCT [] pos cPos rPos idx = " **Error: The term's list in this Tuple is empty.** "
@@ -313,31 +342,31 @@ pRC isU (Case m ms) pos cPos rPos = coloring (elemIndex rPos pos) "case " ++ pRC
         pRCT [] pos cPos rPos idx = " **Error: The list in the Case is empty.** "
         pRCT ((s,m):[]) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " => ") ++ pRC isU m pos (cPos ++ [idx]) rPos
         pRCT ((s,m):ms) pos cPos rPos idx = coloring (elemIndex rPos pos) (s ++ " => ") ++ pRC isU m pos (cPos ++ [idx]) rPos ++ coloring (elemIndex rPos pos) ", " ++ pRCT ms pos cPos rPos (idx + 1)
-pRC isU (TyL t m) pos cPos rPos = coloring (elemIndex rPos pos) ("Λ" ++ t ++ ".") ++ pRC isU m pos (cPos ++ [1]) rPos
-pRC isU (TyA (TyL t m) tau) pos cPos rPos = coloring (elemIndex cPos pos) "(" ++ pRC isU (TyL t m) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ")" ++ " " ++ exprR
+pRC isU (TyL bnd) pos cPos rPos = coloring (elemIndex rPos pos) ("Λ" ++ name2String t ++ ".") ++ pRC isU m pos (cPos ++ [1]) rPos
+    where
+        (t, m) = unsafeUnbind bnd
+pRC isU (TyA (TyL bnd) tau) pos cPos rPos = coloring (elemIndex cPos pos) "(" ++ pRC isU (TyL bnd) pos (cPos ++ [1]) cPos ++ coloring (elemIndex cPos pos) ")" ++ " " ++ exprR
     where
         exprR = case tau of
-                    t1 :=> t2  -> coloring (elemIndex cPos pos) $ "(" ++ showType (t1 :=> t2) ++ ")"
-                    Poly t tau -> coloring (elemIndex cPos pos) $ "(" ++ showType (Poly t tau) ++ ")"
+                    Arr t1 t2  -> coloring (elemIndex cPos pos) $ "(" ++ showType (Arr t1 t2) ++ ")"
+                    Poly bnd -> coloring (elemIndex cPos pos) $ "(" ++ showType (Poly bnd) ++ ")"
                     tau        -> coloring (elemIndex cPos pos) $ showType tau
 pRC isU (TyA m tau) pos cPos rPos = exprL ++ " " ++ exprR
     where
         exprL = case m of
                     A m1 m2   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (A m1 m2) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    L x tau m -> coloring (elemIndex rPos pos) "(" ++ pRC isU (L x tau m) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
-                    TyL t m   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (TyL t m) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    L bnd     -> coloring (elemIndex rPos pos) "(" ++ pRC isU (L bnd) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
+                    TyL bnd   -> coloring (elemIndex rPos pos) "(" ++ pRC isU (TyL bnd) pos (cPos ++ [1]) rPos ++ coloring (elemIndex rPos pos) ")"
                     m         -> pRC isU m pos (cPos ++ [1]) rPos
         exprR = case tau of
-                    t1 :=> t2  -> coloring (elemIndex rPos pos) $ "(" ++ showType (t1 :=> t2) ++ ")"
-                    Poly t tau -> coloring (elemIndex rPos pos) $ "(" ++ showType (Poly t tau) ++ ")"
+                    Arr t1 t2  -> coloring (elemIndex rPos pos) $ "(" ++ showType (Arr t1 t2) ++ ")"
+                    Poly bnd -> coloring (elemIndex rPos pos) $ "(" ++ showType (Poly bnd) ++ ")"
                     tau        -> coloring (elemIndex rPos pos) $ showType tau
 pRC isU m pos cPos rPos = coloring (elemIndex rPos pos) $ pRCshow isU m
 
 pRCshow :: Bool -> Expr -> String
 pRCshow isU m = if isU then showTerm m else show m
 
-
---}
 -------------------------------------------------------------------------------
 -- Position
 -------------------------------------------------------------------------------

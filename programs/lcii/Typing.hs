@@ -3,6 +3,10 @@ import DataType
 import Unbound.LocallyNameless
 import Unbound.LocallyNameless.Ops (unsafeUnbind)
 
+import Parser
+
+import Control.Monad
+
 -------------------------------------------------------------------------------
 -- Typing
 -------------------------------------------------------------------------------
@@ -55,11 +59,6 @@ typing' xi ga (Case m ms) = let tau = typing' xi ga m
 typing' xi ga (TyL bnd) = let (a, m) = unsafeUnbind bnd
                               tau = typing' (a:xi) ga m
                           in  Poly (bind a tau)
-
--- typing' xi ga (TyA m sig) = let tau = typing' xi ga m
---                              in if isPolyType tau && typeTyping xi sig
---                                 then tyAssign (polyTau tau) (polyTV tau) sig xi
---                                 else Failure
 
 typing' xi ga (TyA m sig) = let tau = typing' xi ga m
                              in if typeTyping xi sig
@@ -131,14 +130,25 @@ typeTyping xi tau             = True
 -------------------------------------------------------------------------------
 -- Check Typing Error
 -------------------------------------------------------------------------------
--- hasFailure :: Type -> Bool
--- hasFailure (Arr tau1 tau2) = hasFailure tau1 || hasFailure tau2
--- hasFailure (Prod taus)     = or $ map hasFailure taus
--- hasFailure (Rec taus)      = or $ map (\(s,t) -> hasFailure t) taus
--- hasFailure (Var taus)      = or $ map (\(s,t) -> hasFailure t) taus
--- hasFailure (Poly s tau)    = hasFailure tau
--- hasFailure Failure         = True
--- hasFailure _               = False
+hasFailure :: Type -> FreshM Bool
+hasFailure (Arr tau1 tau2) = do
+  b1 <- hasFailure tau1
+  b2 <- hasFailure tau2
+  return $ b1 || b2
+hasFailure (Prod taus)     = do
+  taus' <- mapM hasFailure taus
+  return $ or taus'
+hasFailure (Rec taus)      = do
+  taus' <- mapM (\(s,t) -> hasFailure t) taus
+  return $ or $ taus'
+hasFailure (Var taus)      = do
+  taus' <- mapM (\(s,t) -> hasFailure t) taus
+  return $ or $ taus'
+hasFailure (Poly bnd)    = do
+  (x, tau) <- unbind bnd
+  hasFailure tau
+hasFailure Failure         = return $ True
+hasFailure _               = return $ False
 
 -------------------------------------------------------------------------------
 -- Utility
@@ -171,12 +181,6 @@ isRecType tau        = False
 varList (Var taus) = taus
 
 recList (Rec taus) = taus
-
-isPolyType (Poly bnd) = True
-isPolyType tau          = False
-
--- polyTV (Poly a tau) = a
--- polyTau (Poly a tau) = tau
 
 caseType :: [TyName] -> [Decl] -> [(String, Expr)] -> [(String, Type)] -> Type -> Type
 caseType xi ga [] [] res   = res

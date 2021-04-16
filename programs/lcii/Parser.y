@@ -122,7 +122,7 @@ env:    decl            { [$1] }
  |      decl ',' env    { $1 : $3 }
  |      'Empty'         { [] }
 
-decl:   ID ':' type     { ((string2Name $1 :: TyName),$3) }
+decl:   ID ':' type     { ((string2Name $1 :: TmName),$3) }
 
 -- term
 
