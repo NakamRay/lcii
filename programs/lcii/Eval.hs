@@ -10,7 +10,7 @@ import Control.Monad.Except
 import Typing
 import DataType
 import Coloring
--- import Parser
+import Parser
 
 import Unbound.LocallyNameless
 import Unbound.LocallyNameless.Ops (unsafeUnbind)
@@ -21,44 +21,44 @@ import Unbound.LocallyNameless.Name
 -------------------------------------------------------------------------------
 reduction t pos = eval t [] pos
 
-redTest = runFreshM $ reduction (A (lam x INT (lam y INT (V x))) (V y)) []
+redTest = runLFreshM $ reduction (A (lam x INT (lam y INT (V x))) (V y)) []
 
 lam :: TmName -> Type -> Expr -> Expr
 lam x tau m = L $ bind (x, Embed tau) m
 
-subsTest :: FreshM Expr
+subsTest :: LFreshM Expr
 subsTest = return $ subst y (V z) (subst x (V y) (lam y INT (V x)))
 
-test1 :: Expr -> FreshM (Maybe Bool)
+test1 :: Expr -> LFreshM (Maybe Bool)
 test1 (L bnd) = do
-    ((x, Embed tau), m) <- unbind bnd
+    lunbind bnd $ \((x, Embed tau), m) -> do
     case m of
         V y -> return $ Just $ isBound y
         otherwise -> return Nothing
 
-test2 = runFreshM $ test1 (lam x INT (V x))
+test2 = runLFreshM $ test1 (lam x INT (V x))
 
--- type M = ExceptT String LFreshM
-eval :: Expr -> [Int] -> [Int] -> FreshM Expr
+test3 = runLFreshM $ reduction (parseExp "(λx:INT.λy:INT.x) y") []
+
+-- type M = ExceptT String LLFreshM
+eval :: Expr -> [Int] -> [Int] -> LFreshM Expr
 eval (A m1 m2)    cPos rPos = do
     m1' <- eval m1 (cPos ++ [1]) rPos
     m2' <- eval m2 (cPos ++ [2]) rPos
     case m1 of
         L bnd -> do
-            ((x, Embed tau), m) <- unbind bnd
+            lunbind bnd $ \((x, Embed tau), m) -> do
             if cPos == rPos
-                then return $ subst x m2 m
+                then do
+                    ac $ subst x m2 m
+                    -- return $ subst x m2 m
                 else return $ A m1' m2'
         otherwise -> return $ A m1' m2'
 eval (L bnd)  cPos rPos = do
-    ((x, Embed tau), m) <- unbind bnd
+    lunbind bnd $ \((x, Embed tau), m) -> do
     m' <- eval m (cPos ++ [1]) rPos
     return $ L (bind (x, Embed tau) m')
-eval (T ms)       cPos rPos = do
-    -- let
-    --     evalMap [] i cPos rPos = []
-    --     evalMap (m:ms) i cPos rPos = eval m (cPos ++ [i+1]) rPos : evalMap ms (i+1) cPos rPos
-    return $ T [ runFreshM $ eval (ms !! (i-1)) (cPos ++ [i]) rPos | i <- [1..length ms] ]
+eval (T ms)       cPos rPos = return $ T [ runLFreshM $ eval (ms !! (i-1)) (cPos ++ [i]) rPos | i <- [1..length ms] ]
 eval (P (T ms) i) cPos rPos =
     if cPos == rPos
         then return $ ms !! (i-1)
@@ -68,7 +68,7 @@ eval (P (T ms) i) cPos rPos =
 eval (P m i)       cPos rPos = do
     m' <- eval m (cPos ++ [1]) rPos
     return $ P m' i
-eval (R ms)        cPos rPos = return $ R [ (fst (ms !! (i-1)), runFreshM $ eval (snd (ms !! (i-1))) (cPos ++ [i]) rPos) | i <- [1..length ms] ]
+eval (R ms)        cPos rPos = return $ R [ (fst (ms !! (i-1)), runLFreshM $ eval (snd (ms !! (i-1))) (cPos ++ [i]) rPos) | i <- [1..length ms] ]
 eval (F (R ms) s)  cPos rPos =
     if cPos == rPos
         then return $ caseFind ms s
@@ -84,18 +84,18 @@ eval (Inj s m tau) cPos rPos = do
 eval (Case (Inj s m tau) ms) cPos rPos =
     if cPos == rPos
         then return $ A (caseFind ms s) m
-        else return $ Case (runFreshM $ eval (Inj s m tau) (cPos ++ [1]) rPos) [ ((fst (ms !! (i-1))), runFreshM $ eval (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) rPos) | i <- [1..length ms] ]
-eval (Case m ms) cPos rPos = return $ Case (runFreshM $ eval m (cPos ++ [1]) rPos) [ (fst (ms !! (i-1)), runFreshM $ eval (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) rPos) | i <- [1..length ms] ]
-eval (TyL bnd)   cPos rPos = return $ TyL (bind t (runFreshM $ eval m (cPos ++ [1]) rPos))
+        else return $ Case (runLFreshM $ eval (Inj s m tau) (cPos ++ [1]) rPos) [ ((fst (ms !! (i-1))), runLFreshM $ eval (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) rPos) | i <- [1..length ms] ]
+eval (Case m ms) cPos rPos = return $ Case (runLFreshM $ eval m (cPos ++ [1]) rPos) [ (fst (ms !! (i-1)), runLFreshM $ eval (snd (ms !! (i-1))) (cPos ++ [2] ++ [i]) rPos) | i <- [1..length ms] ]
+eval (TyL bnd)   cPos rPos = return $ TyL (bind t (runLFreshM $ eval m (cPos ++ [1]) rPos))
     where
         (t, m) = unsafeUnbind bnd
 eval (TyA (TyL bnd) tau) cPos rPos =
     if cPos == rPos
         then return $ substBind bnd tau
-        else return $ TyA (runFreshM $ eval (TyL bnd) (cPos ++ [1]) rPos) tau
+        else return $ TyA (runLFreshM $ eval (TyL bnd) (cPos ++ [1]) rPos) tau
     where
         (t, m) = unsafeUnbind bnd
-eval (TyA m tau)   cPos rPos = return $ TyA (runFreshM $ eval m (cPos ++ [1]) rPos) tau
+eval (TyA m tau)   cPos rPos = return $ TyA (runLFreshM $ eval m (cPos ++ [1]) rPos) tau
 eval t cPos rPos = return $ t
 
 caseFind :: [(String, Expr)] -> String -> Expr
@@ -103,28 +103,33 @@ caseFind ((s, m):[]) s' = if s == s' then m else U
 caseFind ((s, m):ss) s' = if s == s' then m else caseFind ss s'
 
 -- avoidCapture
-ac :: Expr -> FreshM Expr
+ac :: Expr -> LFreshM Expr
 ac (C x tau)   = return $ C x tau
 ac (V x)       = return $ V x
-ac (A m1 m2)   = return $ A (runFreshM $ ac m1) (runFreshM $ ac m2)
-ac (L bnd) =
-    let
-        ((x, Embed tau), m) = unsafeUnbind bnd
-        new = runFreshM $ fresh (string2Name "X")
-    in
-        if notElem (name2String x) (map name2String (fv m :: [TmName]))
-        then return $ L (bind (x, Embed tau) (runFreshM $ ac m))
-        else return $ L (bind (new, Embed tau) (subst x (V new) m))
-ac (T ms)        = return $ T $ map (\x -> runFreshM $ ac x) ms
-ac (P m i)       = return $ P (runFreshM $ ac m) i
-ac (R ms)        = return $ R (map (\(s,m') -> (s, runFreshM $ ac m')) ms)
-ac (F m s)       = return $ F (runFreshM $ ac m) s
-ac (Inj s m tau) = return $ Inj s (runFreshM $ ac m) tau
-ac (Case m ms)   = return $ Case (runFreshM $ ac m) (map (\(s,m') -> (s, runFreshM $ ac m')) ms)
-ac (TyL bnd)     = return $ TyL (bind t (runFreshM $ ac m))
+ac (A m1 m2)   = do
+    m1' <- ac m1
+    m2' <- ac m2
+    return $ A m1' m2'
+ac (L bnd)     =
+    lunbind bnd $ \((x, Embed tau), m) -> do
+        if notElem x (fv m :: [TmName])
+        -- if notElem (name2String x) (map name2String (fv m :: [TmName]))
+        then do
+            m' <- ac m
+            return $ L (bind (x, Embed tau) m')
+        else do
+            new <- lfresh x
+            return $ L (bind (new, Embed tau) (subst x (V new) m))
+ac (T ms)        = return $ T $ map (\x -> runLFreshM $ ac x) ms
+ac (P m i)       = return $ P (runLFreshM $ ac m) i
+ac (R ms)        = return $ R (map (\(s,m') -> (s, runLFreshM $ ac m')) ms)
+ac (F m s)       = return $ F (runLFreshM $ ac m) s
+ac (Inj s m tau) = return $ Inj s (runLFreshM $ ac m) tau
+ac (Case m ms)   = return $ Case (runLFreshM $ ac m) (map (\(s,m') -> (s, runLFreshM $ ac m')) ms)
+ac (TyL bnd)     = return $ TyL (bind t (runLFreshM $ ac m))
     where
         (t, m) = unsafeUnbind bnd
-ac (TyA m t)   = return $ TyA (runFreshM $ ac m) t
+ac (TyA m t)   = return $ TyA (runLFreshM $ ac m) t
 ac e           = return $ e
 
 -- assign :: Expr -> String -> Expr -> [Id] -> Expr
@@ -149,30 +154,30 @@ ac e           = return $ e
 -- assign (TyA m t)   name am bv = TyA (assign m name am bv) t
 -- assign e           name am bv = e
 
-assign :: Expr -> TmName -> Expr -> FreshM Expr
+assign :: Expr -> TmName -> Expr -> LFreshM Expr
 assign (C x tau)   name am = return $ C x tau
 assign (V x)       name am = if x == name then return $ am else return $ V x
-assign (A m1 m2)   name am = return $ A (runFreshM $ assign m1 name am) (runFreshM $ assign m2 name am)
+assign (A m1 m2)   name am = return $ A (runLFreshM $ assign m1 name am) (runLFreshM $ assign m2 name am)
 assign (L bnd) name am =
     let
         ((x, Embed tau), m) = unsafeUnbind bnd
-        new = runFreshM $ fresh x
+        new = runLFreshM $ lfresh x
     in
         if x /= name && notElem x (fv am :: [TmName])
-        then return $ L (bind (x, Embed tau) (runFreshM $ assign m name am))
+        then return $ L (bind (x, Embed tau) (runLFreshM $ assign m name am))
         else if x /= name && elem x (fv am :: [TmName])
-        then return $ L (bind (new, Embed tau) (runFreshM $ assign (runFreshM $ assign m x (V new)) name am))
+        then return $ L (bind (new, Embed tau) (runLFreshM $ assign (runLFreshM $ assign m x (V new)) name am))
         else return $ L bnd
-assign (T ms)        name am = return $ T $ map (\x -> runFreshM $ assign x name am) ms
-assign (P m i)       name am = return $ P (runFreshM $ assign m name am) i
-assign (R ms)        name am = return $ R (map (\(s,m') -> (s, runFreshM $ assign m' name am)) ms)
-assign (F m s)       name am = return $ F (runFreshM $ assign m name am) s
-assign (Inj s m tau) name am = return $ Inj s (runFreshM $ assign m name am) tau
-assign (Case m ms)   name am = return $ Case (runFreshM $ assign m name am) (map (\(s,m') -> (s, runFreshM $ assign m' name am)) ms)
-assign (TyL bnd)     name am = return $ TyL (bind t (runFreshM $ assign m name am))
+assign (T ms)        name am = return $ T $ map (\x -> runLFreshM $ assign x name am) ms
+assign (P m i)       name am = return $ P (runLFreshM $ assign m name am) i
+assign (R ms)        name am = return $ R (map (\(s,m') -> (s, runLFreshM $ assign m' name am)) ms)
+assign (F m s)       name am = return $ F (runLFreshM $ assign m name am) s
+assign (Inj s m tau) name am = return $ Inj s (runLFreshM $ assign m name am) tau
+assign (Case m ms)   name am = return $ Case (runLFreshM $ assign m name am) (map (\(s,m') -> (s, runLFreshM $ assign m' name am)) ms)
+assign (TyL bnd)     name am = return $ TyL (bind t (runLFreshM $ assign m name am))
     where
         (t, m) = unsafeUnbind bnd
-assign (TyA m t)   name am = return $ TyA (runFreshM $ assign m name am) t
+assign (TyA m t)   name am = return $ TyA (runLFreshM $ assign m name am) t
 assign e           name am = return $ e
 
 {--

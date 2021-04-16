@@ -130,7 +130,7 @@ typeTyping xi tau             = True
 -------------------------------------------------------------------------------
 -- Check Typing Error
 -------------------------------------------------------------------------------
-hasFailure :: Type -> FreshM Bool
+hasFailure :: Type -> LFreshM Bool
 hasFailure (Arr tau1 tau2) = do
   b1 <- hasFailure tau1
   b2 <- hasFailure tau2
@@ -145,7 +145,7 @@ hasFailure (Var taus)      = do
   taus' <- mapM (\(s,t) -> hasFailure t) taus
   return $ or $ taus'
 hasFailure (Poly bnd)    = do
-  (x, tau) <- unbind bnd
+  lunbind bnd $ \(x, tau) -> do
   hasFailure tau
 hasFailure Failure         = return $ True
 hasFailure _               = return $ False

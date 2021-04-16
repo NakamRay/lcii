@@ -68,7 +68,7 @@ ii xi ga t = do
     let occ = getRedexPos t []
     putStrLn ""
     printWithColor False t
-    if runFreshM $ hasFailure $ typing xi ga t
+    if runLFreshM $ hasFailure $ typing xi ga t
     then do
         putStrLn "Typing Error"
     else do
@@ -97,7 +97,7 @@ ii xi ga t = do
                     --     putStrLn ""
                     --     putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
                     --     putStrLn ""
-                    ii xi ga $ runFreshM $ reduction t (occ !! idx)
+                    ii xi ga $ runLFreshM $ reduction t (occ !! idx)
 
 iiUntyped :: Expr -> IO ()
 iiUntyped term = do
@@ -130,7 +130,7 @@ iiUntyped term = do
                 --     putStrLn ""
                 --     putStr $ ansi' Reverse $ "α: " ++ (concat $ intersperse ", " alpha)
                 --     putStrLn ""
-                iiUntyped $ runFreshM $ reduction t (occ !! idx)
+                iiUntyped $ runLFreshM $ reduction t (occ !! idx)
 
 -------------------------------------------------------------------------------
 -- Utility
