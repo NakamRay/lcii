@@ -40,6 +40,8 @@ test2 = runLFreshM $ test1 (lam x INT (V x))
 
 test3 = runLFreshM $ reduction (parseExp "(λx:INT.λy:INT.x) y") []
 
+test4 = runLFreshM $ reduction (v2f (parseExp "(λx:INT.λy:INT.x) y")) []
+
 -- type M = ExceptT String LLFreshM
 eval :: Expr -> [Int] -> [Int] -> LFreshM Expr
 eval (A m1 m2)    cPos rPos = do
@@ -131,6 +133,10 @@ ac (TyL bnd)     = return $ TyL (bind t (runLFreshM $ ac m))
         (t, m) = unsafeUnbind bnd
 ac (TyA m t)   = return $ TyA (runLFreshM $ ac m) t
 ac e           = return $ e
+
+v2f :: Expr -> Expr
+v2f t = let fvs = fv t :: [TmName]
+        in  Data.List.foldl (\t x -> subst x (FV x) t) t fvs
 
 -- assign :: Expr -> String -> Expr -> [Id] -> Expr
 -- assign (C x tau)   name am bv = C x tau

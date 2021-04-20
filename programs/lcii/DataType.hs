@@ -29,11 +29,12 @@ data Type = Unit
           | TyVar TyName
           | Poly (Bind TyName Type)
           | Failure
-  deriving Show
+--   deriving Show
 
 data Expr = U -- Unit
           | C TmName Type -- Const
           | V TmName -- Variable
+          | FV TmName -- Free Variable
           | A Expr Expr -- Application
           | L (Bind (TmName, Embed Type) Expr) -- Abstraction
           | T [Expr] -- Tuple
@@ -45,7 +46,7 @@ data Expr = U -- Unit
           | TyL (Bind TyName Expr) -- Type Abstraction
           | TyA Expr Type -- Type Application
           | N Int -- numbers to lambda term
-  deriving Show
+--   deriving Show
 
 $(derive [''Type, ''Expr])
 
@@ -56,16 +57,17 @@ instance Subst Expr Type where
 instance Subst Type Expr where
 instance Subst Expr Expr where
     isvar (V x) = Just (SubstName x)
+    -- isvar (FV x) = Just (SubstName x)
     isvar _  = Nothing
 instance Subst Type Type where
     isvar (TyVar x) = Just (SubstName x)
     isvar _ = Nothing
 
--- instance Show Type where
---     show = showType
+instance Show Type where
+    show = showType
 
--- instance Show Expr where
---     show = showExpr
+instance Show Expr where
+    show = showExpr
 
 -- Names of bound variables
 bound = ["x","y","z","u","v","w"] ++ map (:[]) ['a'..'t']
@@ -127,6 +129,7 @@ showExpr :: Expr -> String
 showExpr U           = "()"
 showExpr (C x tau)   = name2String x ++ ":" ++ show tau
 showExpr (V x)       = name2String x
+showExpr (FV x)      = name2String x
 showExpr (A m1 m2)   = exprL ++ " " ++ exprR
     where
         exprL = case m1 of
@@ -178,6 +181,7 @@ showExpr (TyA m tau) = exprL ++ " " ++ exprR
 showTerm :: Expr -> String
 showTerm U           = "()"
 showTerm (V x)       = name2String x
+showTerm (FV x)       = name2String x
 showTerm (A m1 m2)   = exprL ++ " " ++ exprR
     where
         exprL = case m1 of
