@@ -1121,7 +1121,7 @@ happyReduction_14 (HappyAbsSyn15  happy_var_3)
 	_
 	(HappyTerminal (ID happy_var_1))
 	 =  HappyAbsSyn12
-		 (C (string2Name happy_var_1 :: TmName) happy_var_3
+		 (C happy_var_1 happy_var_3
 	)
 happyReduction_14 _ _ _  = notHappyAtAll 
 

@@ -463,3 +463,6 @@ example3 = unifP "_f(_g(x, y), x, y)" "_f(z, _g(y, y), y)"
 -- higher-order
 -- λx,y.F(x) =? λx,y.c(G(y, x))
 example4 = unifP "Lx,y.F(x)" "Lx,y._c(G(y, x))" 
+
+
+test = runLFreshM $ prTerm $ runLFreshM $ red (Abs (bind (s2n "x") (Abs (bind (s2n "y") (V (s2n "x")))))) [V (s2n "y")]

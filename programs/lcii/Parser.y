@@ -75,7 +75,7 @@ inj:    '(' '<' ID '=' exp '>' ':' type ')'  { Inj $3 $5 $8 }
 
 exp:    '(' ')'                       { U }
  |      '(' exp ')'                   { $2 }
- |      ID ':' type                   { C (string2Name $1 :: TmName) $3 }
+ |      ID ':' type                   { C $1 $3 }
  |      ID                            { V (string2Name $1 :: TmName) }
  |      NUM                           { N $1 }
  |      'λ' ID ':' type '.' exp       { L (bind ((string2Name $2 :: TmName), Embed $4) $6) }

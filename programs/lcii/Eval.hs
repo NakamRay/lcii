@@ -42,6 +42,9 @@ test3 = runLFreshM $ reduction (parseExp "(λx:INT.λy:INT.x) y") []
 
 test4 = runLFreshM $ reduction (v2f (parseExp "(λx:INT.λy:INT.x) y")) []
 
+test51 = runLFreshM $ reduction (v2f (parseExp "(λx:INT.λy:INT.λz:INT.x y) y")) []
+test52 = runLFreshM $ reduction (v2f (parseExp "(λx:INT.λy:INT.λz:INT.x y1) y")) []
+
 -- type M = ExceptT String LLFreshM
 eval :: Expr -> [Int] -> [Int] -> LFreshM Expr
 eval (A m1 m2)    cPos rPos = do
@@ -53,7 +56,6 @@ eval (A m1 m2)    cPos rPos = do
             if cPos == rPos
                 then do
                     ac $ subst x m2 m
-                    -- return $ subst x m2 m
                 else return $ A m1' m2'
         otherwise -> return $ A m1' m2'
 eval (L bnd)  cPos rPos = do
@@ -164,15 +166,18 @@ assign :: Expr -> TmName -> Expr -> LFreshM Expr
 assign (C x tau)   name am = return $ C x tau
 assign (V x)       name am = if x == name then return $ am else return $ V x
 assign (A m1 m2)   name am = return $ A (runLFreshM $ assign m1 name am) (runLFreshM $ assign m2 name am)
-assign (L bnd) name am =
-    let
-        ((x, Embed tau), m) = unsafeUnbind bnd
-        new = runLFreshM $ lfresh x
-    in
+assign (L bnd) name am = do
+    lunbind bnd $ \((x, Embed tau), m) -> do
+        new <- lfresh x
         if x /= name && notElem x (fv am :: [TmName])
-        then return $ L (bind (x, Embed tau) (runLFreshM $ assign m name am))
+        then do
+            m' <- assign m name am
+            return $ L (bind (x, Embed tau) m')
         else if x /= name && elem x (fv am :: [TmName])
-        then return $ L (bind (new, Embed tau) (runLFreshM $ assign (runLFreshM $ assign m x (V new)) name am))
+        then do
+            m'  <- assign m x (V new)
+            m'' <- assign m' name am
+            return $ L (bind (new, Embed tau) m'')
         else return $ L bnd
 assign (T ms)        name am = return $ T $ map (\x -> runLFreshM $ assign x name am) ms
 assign (P m i)       name am = return $ P (runLFreshM $ assign m name am) i

@@ -29,10 +29,10 @@ data Type = Unit
           | TyVar TyName
           | Poly (Bind TyName Type)
           | Failure
---   deriving Show
+  deriving Show
 
 data Expr = U -- Unit
-          | C TmName Type -- Const
+          | C String Type -- Const
           | V TmName -- Variable
           | FV TmName -- Free Variable
           | A Expr Expr -- Application
@@ -46,7 +46,7 @@ data Expr = U -- Unit
           | TyL (Bind TyName Expr) -- Type Abstraction
           | TyA Expr Type -- Type Application
           | N Int -- numbers to lambda term
---   deriving Show
+  deriving Show
 
 $(derive [''Type, ''Expr])
 
@@ -63,11 +63,11 @@ instance Subst Type Type where
     isvar (TyVar x) = Just (SubstName x)
     isvar _ = Nothing
 
-instance Show Type where
-    show = showType
+-- instance Show Type where
+--     show = showType
 
-instance Show Expr where
-    show = showExpr
+-- instance Show Expr where
+--     show = showExpr
 
 -- Names of bound variables
 bound = ["x","y","z","u","v","w"] ++ map (:[]) ['a'..'t']
@@ -112,24 +112,24 @@ showType (Var ts) = "<" ++ showTypes ts ++ ">"
         showTypes []     = " **Error: The Var type is empty.**"
         showTypes ((s, t):[]) = s ++ ":" ++ showType t
         showTypes ((s, t):ts) = s ++ ":" ++ showType t ++ ", " ++ showTypes ts
-showType (TyVar t) = name2String t
-showType (Poly bnd) = "∀ " ++ (name2String t) ++ "." ++ showType tau
+showType (TyVar t) = show t
+showType (Poly bnd) = "∀ " ++ (show t) ++ "." ++ showType tau
     where
         (t, tau) = unsafeUnbind bnd
 showType Failure = "Failure"
 
 showGa :: [Decl] -> IO ()
 showGa []     = putStrLn ""
-showGa (g:[]) = putStrLn $ name2String (fst g) ++ ":" ++ show (snd g)
+showGa (g:[]) = putStrLn $ show (fst g) ++ ":" ++ show (snd g)
 showGa (g:gs) = do 
-    putStr $ name2String (fst g) ++ ":" ++ show (snd g) ++ ", "
+    putStr $ show (fst g) ++ ":" ++ show (snd g) ++ ", "
     showGa gs
 
 showExpr :: Expr -> String
 showExpr U           = "()"
-showExpr (C x tau)   = name2String x ++ ":" ++ show tau
-showExpr (V x)       = name2String x
-showExpr (FV x)      = name2String x
+showExpr (C x tau)   = show x ++ ":" ++ show tau
+showExpr (V x)       = show x
+showExpr (FV x)      = show x
 showExpr (A m1 m2)   = exprL ++ " " ++ exprR
     where
         exprL = case m1 of
@@ -141,7 +141,7 @@ showExpr (A m1 m2)   = exprL ++ " " ++ exprR
                     L bnd -> "(" ++ showExpr (L bnd) ++ ")"
                     TyL bnd -> "(" ++ showExpr (TyL bnd) ++ ")"
                     m         -> showExpr m
-showExpr (L bnd) = "λ" ++ name2String x ++ ":" ++ show tau ++ "." ++ showExpr m
+showExpr (L bnd) = "λ" ++ show x ++ ":" ++ show tau ++ "." ++ showExpr m
     where
         ((x, Embed tau), m) = unsafeUnbind bnd
 showExpr (T ms)      = "{" ++ showExprs (map (\x -> showExpr x) ms) ++ "}"
@@ -163,7 +163,7 @@ showExpr (Case m ms)    = "case " ++ showExpr m ++ " of " ++ showExprs (map (\(s
         showExprs []     = " **Error: The list in the Case is empty.** "
         showExprs ((s, m):[]) = s ++ " => " ++ m
         showExprs ((s, m):ss) = s ++ " => " ++ m ++ ", " ++ showExprs ss
-showExpr (TyL bnd) = "Λ" ++ name2String x ++ "." ++ showExpr m
+showExpr (TyL bnd) = "Λ" ++ show x ++ "." ++ showExpr m
     where
         (x, m) = unsafeUnbind bnd
 showExpr (TyA m tau) = exprL ++ " " ++ exprR
@@ -180,8 +180,8 @@ showExpr (TyA m tau) = exprL ++ " " ++ exprR
 
 showTerm :: Expr -> String
 showTerm U           = "()"
-showTerm (V x)       = name2String x
-showTerm (FV x)       = name2String x
+showTerm (V x)       = show x
+showTerm (FV x)       = show x
 showTerm (A m1 m2)   = exprL ++ " " ++ exprR
     where
         exprL = case m1 of
@@ -191,7 +191,7 @@ showTerm (A m1 m2)   = exprL ++ " " ++ exprR
                     A m1 m2   -> "(" ++ showTerm (A m1 m2) ++ ")"
                     L bnd -> "(" ++ showTerm (L bnd) ++ ")"
                     m         -> showTerm m
-showTerm (L bnd)     = "λ" ++ name2String x ++ "." ++ showTerm m
+showTerm (L bnd)     = "λ" ++ show x ++ "." ++ showTerm m
     where
         ((x, Embed tau), m) = unsafeUnbind bnd
 showTerm (T ms)      = "{" ++ showTerms (map (\x -> showTerm x) ms) ++ "}"
