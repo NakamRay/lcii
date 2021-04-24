@@ -73,12 +73,16 @@ caseExps: ID '=>' exp               { [($1, $3)] }
 
 inj:    '(' '<' ID '=' exp '>' ':' type ')'  { Inj $3 $5 $8 }
 
+tmVar: ID      { string2Name $1 :: TmName }
+ |     ID NUM  { makeName $1 (toInteger $2) :: TmName }
+
 exp:    '(' ')'                       { U }
  |      '(' exp ')'                   { $2 }
  |      ID ':' type                   { C $1 $3 }
- |      ID                            { V (string2Name $1 :: TmName) }
- |      NUM                           { N $1 }
- |      'λ' ID ':' type '.' exp       { L (bind ((string2Name $2 :: TmName), Embed $4) $6) }
+ |      ID NUM                        { V (makeName $1 (toInteger $2) :: TmName) }
+ |      tmVar                         { V $1 }
+-- |      NUM                           { N $1 }
+ |      'λ' tmVar ':' type '.' exp    { L (bind ($2, Embed $4) $6) }
  |      '{' exps '}'                  { T $2 }
  |      exp '.' NUM                   { P $1 $3 }
  |      exp exp %prec APP             { A $1 $2 }

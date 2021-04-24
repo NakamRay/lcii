@@ -29,12 +29,10 @@ lam x tau m = L $ bind (x, Embed tau) m
 subsTest :: LFreshM Expr
 subsTest = return $ subst y (V z) (subst x (V y) (lam y INT (V x)))
 
-test1 :: Expr -> LFreshM (Maybe Bool)
-test1 (L bnd) = do
-    lunbind bnd $ \((x, Embed tau), m) -> do
-    case m of
-        V y -> return $ Just $ isBound y
-        otherwise -> return Nothing
+test1 :: Expr -> LFreshM TmName
+test1 t = do
+    new <- lfresh y
+    return new
 
 test2 = runLFreshM $ test1 (lam x INT (V x))
 
@@ -44,6 +42,10 @@ test4 = runLFreshM $ reduction (v2f (parseExp "(λx:INT.λy:INT.x) y")) []
 
 test51 = runLFreshM $ reduction (v2f (parseExp "(λx:INT.λy:INT.λz:INT.x y) y")) []
 test52 = runLFreshM $ reduction (v2f (parseExp "(λx:INT.λy:INT.λz:INT.x y1) y")) []
+test53 = runLFreshM $ reduction (v2f (parseExp "(λx:INT.λy1:INT.λz:INT.x y1) y1")) []
+
+test61 = name2String ((makeName "x" 1) :: TmName)
+test62 = name2String $ (fv (parseExp "x1") :: [TmName]) !! 0
 
 -- type M = ExceptT String LLFreshM
 eval :: Expr -> [Int] -> [Int] -> LFreshM Expr
@@ -117,7 +119,6 @@ ac (A m1 m2)   = do
 ac (L bnd)     =
     lunbind bnd $ \((x, Embed tau), m) -> do
         if notElem x (fv m :: [TmName])
-        -- if notElem (name2String x) (map name2String (fv m :: [TmName]))
         then do
             m' <- ac m
             return $ L (bind (x, Embed tau) m')
