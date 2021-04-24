@@ -7,19 +7,19 @@
     >
       <div class="d-flex align-center">
         <v-img
-          alt="Logo"
+          alt="Logo Icon"
           class="shrink mx-2"
           contain
-          :src="require('@/assets/logo.png')"
+          :src="app.logoIcon"
           transition="scale-transition"
           width="30"
         />
 
         <v-img
-          alt="LCII"
-          class="shrink mt-1 hidden-sm-and-down"
+          alt="Logo Text"
+          class="shrink hidden-sm-and-down"
           contain
-          :src="require('@/assets/logo_text.png')"
+          :src="app.logoText"
           height="30"
           width="80"
         />
@@ -40,9 +40,11 @@
 
 <script>
 import Usage from '@/components/Usage.vue'
+import { app } from '~/assets/configs.js'
 
 export default {
   data: () => ({
+    app,
     dialog: false,
   }),
   components: {

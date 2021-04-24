@@ -1,3 +1,9 @@
-ghc API
-sudo rm -r /var/www/html/api.php /var/www/html/lcii
-sudo cp -r ../* /var/www/html/
+if test "$1" = "start"
+then
+  sudo service apache2 start
+elif test "$1" = "stop"
+then
+  sudo service apache2 stop
+else
+  echo "invalid argument"
+fi

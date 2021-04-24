@@ -10,9 +10,9 @@ putenv("LANG=C.UTF-8");
 // putenv("LANG=ja_JP.UTF-8");
 
 define('base', './lcii/API');
-define('xi', '"' . $_POST['xi'] . '"');
-define('ga', '"' . $_POST['ga'] . '"');
-define('term', '"' . $_POST['term'] . '"');
+define('xi', '"' . $_POST['typeContext'] . '"');
+define('ga', '"' . $_POST['termContext'] . '"');
+define('term', '"' . $_POST['lambdaTerm'] . '"');
 
 if ($_POST['isUntyped'] == 'true') {
     define('option', '-u');
@@ -25,7 +25,7 @@ switch ($_POST['mode']) {
         $cmd = base . ' init ' . option . ' ' . xi . ' ' . ga . ' ' . term;
         break;
     case 'red':
-        define('num', '"' . $_POST['num'] . '"');
+        define('num', '"' . $_POST['redexNumber'] . '"');
         $cmd = base . ' red ' . option . ' ' . xi . ' ' . ga . ' ' . term . ' ' . num;
         break;
     case 'check':

@@ -1,95 +1,53 @@
-{-# LANGUAGE MultiParamTypeClasses
-           , TemplateHaskell
-           , ScopedTypeVariables
-           , FlexibleInstances
-           , FlexibleContexts
-           , UndecidableInstances
-#-}
-
 module DataType where
 
-import Unbound.LocallyNameless
-import Unbound.LocallyNameless.Ops (unsafeUnbind)
-import Data.List
-
 type Id = String
-
-type TyName = Name Type
-type TmName = Name Expr
-
-type Decl = (TmName, Type)
+type Decl = (Id,Type)
 type Pos = [[Int]]
 
 data Type = Unit
           | INT | BOOL
-          | Arr Type Type
+          | Type :=> Type
           | Prod [Type]
           | Rec [(String, Type)]
           | Var [(String, Type)]
-          | TyVar TyName
-          | Poly (Bind TyName Type)
+          | TyVar String
+          | Poly String Type
           | Failure
-  deriving Show
+          deriving (Eq)
 
 data Expr = U -- Unit
-          | C String Type -- Const
-          | V TmName -- Variable
-          | FV TmName -- Free Variable
+          | C Id Type -- Const
+          | V Id -- Variable
           | A Expr Expr -- Application
-          | L (Bind (TmName, Embed Type) Expr) -- Abstraction
+          | L Id Type Expr -- Abstraction
           | T [Expr] -- Tuple
           | P Expr Int -- Projection
           | R [(String, Expr)] -- Record
           | F Expr String      -- Field
           | Inj String Expr Type -- allow Variant Type only
           | Case Expr [(String, Expr)]
-          | TyL (Bind TyName Expr) -- Type Abstraction
+          | TyL String Expr -- Type Abstraction
           | TyA Expr Type -- Type Application
           | N Int -- numbers to lambda term
-  deriving Show
+            deriving (Eq)
 
-$(derive [''Type, ''Expr])
+instance Show Type where
+    show = showType
 
-instance Alpha Type
-instance Alpha Expr
-
-instance Subst Expr Type where
-instance Subst Type Expr where
-instance Subst Expr Expr where
-    isvar (V x) = Just (SubstName x)
-    -- isvar (FV x) = Just (SubstName x)
-    isvar _  = Nothing
-instance Subst Type Type where
-    isvar (TyVar x) = Just (SubstName x)
-    isvar _ = Nothing
-
--- instance Show Type where
---     show = showType
-
--- instance Show Expr where
---     show = showExpr
+instance Show Expr where
+    show = showExpr
 
 -- Names of bound variables
 bound = ["x","y","z","u","v","w"] ++ map (:[]) ['a'..'t']
 tyBound = map (:[]) ['A'..'Z']
 
-x :: TmName
-y :: TmName
-z :: TmName
-(x,y,z) = (string2Name "x", string2Name "y", string2Name "z")
-
-a :: TyName
-b :: TyName
-c :: TyName
-(a,b,c) = (string2Name "a", string2Name "b", string2Name "c")
-
 showType :: Type -> String
 showType Unit        = "Unit"
 showType INT         = "INT"
 showType BOOL        = "BOOL"
-showType (Arr t1 t2) = typeL ++ "->" ++ typeR
+showType (t1 :=> t2) = typeL ++ "->" ++ typeR
     where
-        isArrowType (Arr tau1 tau2) = True
+        isArrowType (tau1 :=> tau2) = True
         isArrowType tau             = False
         typeL = if isArrowType t1
                 then "(" ++ show t1 ++ ")"
@@ -112,38 +70,33 @@ showType (Var ts) = "<" ++ showTypes ts ++ ">"
         showTypes []     = " **Error: The Var type is empty.**"
         showTypes ((s, t):[]) = s ++ ":" ++ showType t
         showTypes ((s, t):ts) = s ++ ":" ++ showType t ++ ", " ++ showTypes ts
-showType (TyVar t) = show t
-showType (Poly bnd) = "∀ " ++ (show t) ++ "." ++ showType tau
-    where
-        (t, tau) = unsafeUnbind bnd
+showType (TyVar t) = t
+showType (Poly t tau) = "∀ " ++ t ++ "." ++ showType tau
 showType Failure = "Failure"
 
 showGa :: [Decl] -> IO ()
 showGa []     = putStrLn ""
-showGa (g:[]) = putStrLn $ show (fst g) ++ ":" ++ show (snd g)
+showGa (g:[]) = putStrLn $ fst g ++ ":" ++ show (snd g)
 showGa (g:gs) = do 
-    putStr $ show (fst g) ++ ":" ++ show (snd g) ++ ", "
+    putStr $ fst g ++ ":" ++ show (snd g) ++ ", "
     showGa gs
 
 showExpr :: Expr -> String
 showExpr U           = "()"
-showExpr (C x tau)   = show x ++ ":" ++ show tau
-showExpr (V x)       = show x
-showExpr (FV x)      = show x
+showExpr (C x tau)   = x ++ ":" ++ show tau
+showExpr (V x)       = x
 showExpr (A m1 m2)   = exprL ++ " " ++ exprR
     where
         exprL = case m1 of
-                    L bnd -> "(" ++ showExpr (L bnd) ++ ")"
-                    TyL bnd -> "(" ++ showExpr (TyL bnd) ++ ")"
+                    L x tau m -> "(" ++ showExpr (L x tau m) ++ ")"
+                    TyL t m -> "(" ++ showExpr (TyL t m) ++ ")"
                     m         -> showExpr m
         exprR = case m2 of
                     A m1 m2   -> "(" ++ showExpr (A m1 m2) ++ ")"
-                    L bnd -> "(" ++ showExpr (L bnd) ++ ")"
-                    TyL bnd -> "(" ++ showExpr (TyL bnd) ++ ")"
+                    L x tau m -> "(" ++ showExpr (L x tau m) ++ ")"
+                    TyL t m -> "(" ++ showExpr (TyL t m) ++ ")"
                     m         -> showExpr m
-showExpr (L bnd) = "λ" ++ show x ++ ":" ++ show tau ++ "." ++ showExpr m
-    where
-        ((x, Embed tau), m) = unsafeUnbind bnd
+showExpr (L x tau m) = "λ" ++ x ++ ":" ++ show tau ++ "." ++ showExpr m
 showExpr (T ms)      = "{" ++ showExprs (map (\x -> showExpr x) ms) ++ "}"
     where
         showExprs []     = " **Error: The list in the Tuple is empty.** "
@@ -163,37 +116,32 @@ showExpr (Case m ms)    = "case " ++ showExpr m ++ " of " ++ showExprs (map (\(s
         showExprs []     = " **Error: The list in the Case is empty.** "
         showExprs ((s, m):[]) = s ++ " => " ++ m
         showExprs ((s, m):ss) = s ++ " => " ++ m ++ ", " ++ showExprs ss
-showExpr (TyL bnd) = "Λ" ++ show x ++ "." ++ showExpr m
-    where
-        (x, m) = unsafeUnbind bnd
+showExpr (TyL t m) = "Λ" ++ t ++ "." ++ showExpr m
 showExpr (TyA m tau) = exprL ++ " " ++ exprR
     where
         exprL = case m of
                     A m1 m2   -> "(" ++ showExpr (A m1 m2) ++ ")"
-                    L bnd -> "(" ++ showExpr (L bnd) ++ ")"
-                    TyL bnd   -> "(" ++ showExpr (TyL bnd) ++ ")"
+                    L x tau m -> "(" ++ showExpr (L x tau m) ++ ")"
+                    TyL t m   -> "(" ++ showExpr (TyL t m) ++ ")"
                     m         -> showExpr m
         exprR = case tau of
-                    Arr t1 t2 -> "(" ++ showType (Arr t1 t2) ++ ")"
-                    Poly bnd  -> "(" ++ showType (Poly bnd) ++ ")"
-                    tau       -> showType tau
+                    t1 :=> t2  -> "(" ++ showType (t1 :=> t2) ++ ")"
+                    Poly t tau -> "(" ++ showType (Poly t tau) ++ ")"
+                    tau        -> showType tau
 
 showTerm :: Expr -> String
 showTerm U           = "()"
-showTerm (V x)       = show x
-showTerm (FV x)       = show x
+showTerm (V x)       = x
 showTerm (A m1 m2)   = exprL ++ " " ++ exprR
     where
         exprL = case m1 of
-                    L bnd -> "(" ++ showTerm (L bnd) ++ ")"
+                    L x tau m -> "(" ++ showTerm (L x tau m) ++ ")"
                     m         -> showTerm m
         exprR = case m2 of
                     A m1 m2   -> "(" ++ showTerm (A m1 m2) ++ ")"
-                    L bnd -> "(" ++ showTerm (L bnd) ++ ")"
+                    L x tau m -> "(" ++ showTerm (L x tau m) ++ ")"
                     m         -> showTerm m
-showTerm (L bnd)     = "λ" ++ show x ++ "." ++ showTerm m
-    where
-        ((x, Embed tau), m) = unsafeUnbind bnd
+showTerm (L x tau m) = "λ" ++ x ++ "." ++ showTerm m
 showTerm (T ms)      = "{" ++ showTerms (map (\x -> showTerm x) ms) ++ "}"
     where
         showTerms []     = " **Error: The list in the Tuple is empty.** "
@@ -212,4 +160,4 @@ showTerm (Case m ms)    = "case " ++ showTerm m ++ " of " ++ showTerms (map (\(s
         showTerms []     = " **Error: The list in the Case is empty.** "
         showTerms ((s, m):[]) = s ++ " => " ++ m
         showTerms ((s, m):ss) = s ++ " => " ++ m ++ ", " ++ showTerms ss
--- showTerm (N i) = show i
+showTerm (N i) = show i

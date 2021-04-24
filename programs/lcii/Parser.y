@@ -2,7 +2,6 @@
 module Parser where
 import Lexer
 import DataType
-import Unbound.LocallyNameless
 }
 
 %name happyParseExp exp
@@ -73,16 +72,13 @@ caseExps: ID '=>' exp               { [($1, $3)] }
 
 inj:    '(' '<' ID '=' exp '>' ':' type ')'  { Inj $3 $5 $8 }
 
-tmVar: ID      { string2Name $1 :: TmName }
- |     ID NUM  { makeName $1 (toInteger $2) :: TmName }
-
 exp:    '(' ')'                       { U }
  |      '(' exp ')'                   { $2 }
  |      ID ':' type                   { C $1 $3 }
- |      ID NUM                        { V (makeName $1 (toInteger $2) :: TmName) }
- |      tmVar                         { V $1 }
--- |      NUM                           { N $1 }
- |      'λ' tmVar ':' type '.' exp    { L (bind ($2, Embed $4) $6) }
+ |      ID ':' ID                     { C $1 (TyVar $3) }
+ |      ID                            { V $1 }
+ |      NUM                           { N $1 }
+ |      'λ' ID ':' type '.' exp       { L $2 $4 $6 }
  |      '{' exps '}'                  { T $2 }
  |      exp '.' NUM                   { P $1 $3 }
  |      exp exp %prec APP             { A $1 $2 }
@@ -90,9 +86,9 @@ exp:    '(' ')'                       { U }
  |      exp '.' ID                    { F $1 $3 }
  |      inj                           { $1 }
  |      'case' exp 'of' caseExps      { Case $2 $4 }
- |      'Λ' TyID '.' exp              { TyL (bind (string2Name $2 :: TyName) $4) }
+ |      'Λ' TyID '.' exp              { TyL $2 $4 }
  |      exp type                      { TyA $1 $2 }
--- |      'succ'                        { TyL "T1" (TyL "T2" (TyL "T3" (L "n" (((TyVar "T1") :=> (TyVar "T2")) :=> ((TyVar "T3") :=> (TyVar "T1"))) (L "f" ((TyVar "T1") :=> (TyVar "T2")) (L "x" (TyVar "T3") (A (V "f") (A (A (V "n") (V "f")) (V "x")))))))) }
+ |      'succ'                        { TyL "T1" (TyL "T2" (TyL "T3" (L "n" (((TyVar "T1") :=> (TyVar "T2")) :=> ((TyVar "T3") :=> (TyVar "T1"))) (L "f" ((TyVar "T1") :=> (TyVar "T2")) (L "x" (TyVar "T3") (A (V "f") (A (A (V "n") (V "f")) (V "x")))))))) }
 
 -- type
 
@@ -105,19 +101,19 @@ sum:    ID ':' type            { [($1, $3)] }
 type:   '(' type ')'      { $2 }
  |      INT               { INT }
  |      BOOL              { BOOL }
- |      TyID              { TyVar (string2Name $1 :: TyName) }
- |      type '->' type    { Arr $1 $3 }
+ |      TyID              { TyVar $1 }
+ |      type '->' type    { $1 :=> $3 }
  |      '{' prod '}'      { Prod $2 }
  |      '{' sum '}'       { Rec $2 }
  |      '<' sum '>'       { Var $2 }
- |      '∀' TyID '.' type  { Poly (bind (string2Name $2 :: TyName) $4) }
+ |      '∀' TyID '.' type  { Poly $2 $4 }
  |      UNIT              { Unit }
 
 -- type context
 
 typeContext:
-    TyID                  { [(string2Name $1 :: TyName)] }
- |  TyID ',' typeContext  { (string2Name $1 :: TyName) : $3 }
+    TyID                  { [$1] }
+ |  TyID ',' typeContext  { $1 : $3 }
  |  'Empty'               { [] }
 
 -- term context
@@ -126,7 +122,7 @@ env:    decl            { [$1] }
  |      decl ',' env    { $1 : $3 }
  |      'Empty'         { [] }
 
-decl:   ID ':' type     { ((string2Name $1 :: TmName),$3) }
+decl:   ID ':' type     { ($1,$3) }
 
 -- term
 
@@ -141,9 +137,9 @@ caseTerms: ID '=>' term                { [($1, $3)] }
 
 term:   '(' ')'                     { U }
  |      '(' term ')'                { $2 }
- |      ID                          { V (string2Name $1 :: TmName) }
+ |      ID                          { V $1 }
  |      NUM                         { N $1 }
- |      'λ' ID '.' term             { L (bind ((string2Name $2 :: TmName), Embed Unit) $4) }
+ |      'λ' ID '.' term             { L $2 Unit $4 }
  |      '{' terms '}'               { T $2 }
  |      term '.' NUM                { P $1 $3 }
  |      term term %prec APP         { A $1 $2 }
@@ -151,12 +147,12 @@ term:   '(' ')'                     { U }
  |      term '.' ID                 { F $1 $3 }
  |      '(' '<' ID '=' term '>' ')' { Inj $3 $5 Unit }
  |      'case' term 'of' caseTerms  { Case $2 $4 }
--- |      'succ'                      { L "n" Unit (L "f" Unit (L "x" Unit (A (V "f") (A (A (V "n") (V "f")) (V "x"))))) }
--- |      'pred'                      { L "n" Unit (L "f" Unit (L "x" Unit (A (A (A (V "n") (L "g" Unit (L "h" Unit (A (V "h") (A (V "g") (V "f")))))) (L "u" Unit (V "x"))) (L "u" Unit (V "u"))))) }
--- |      term '+' term               { A (A (L "m" Unit (L "n" Unit (A (A (V "m") (L "n" Unit (L "f" Unit (L "x" Unit (A (V "f") (A (A (V "n") (V "f")) (V "x"))))))) (V "n")))) $1) $3 }
--- |      term '-' term               { A (A (L "m" Unit (L "n" Unit (A (A (V "n") ((L "n" Unit (L "f" Unit (L "x" Unit (A (A (A (V "n") (L "g" Unit (L "h" Unit (A (V "h") (A (V "g") (V "f")))))) (L "u" Unit (V "x"))) (L "u" Unit (V "u")))))))) (V "m")))) $1) $3 }
--- |      'true'                      { (L "x" Unit (L "y" Unit (V "x"))) }
--- |      'false'                     { (L "x" Unit (L "y" Unit (V "y"))) }
+ |      'succ'                      { L "n" Unit (L "f" Unit (L "x" Unit (A (V "f") (A (A (V "n") (V "f")) (V "x"))))) }
+ |      'pred'                      { L "n" Unit (L "f" Unit (L "x" Unit (A (A (A (V "n") (L "g" Unit (L "h" Unit (A (V "h") (A (V "g") (V "f")))))) (L "u" Unit (V "x"))) (L "u" Unit (V "u"))))) }
+ |      term '+' term               { A (A (L "m" Unit (L "n" Unit (A (A (V "m") (L "n" Unit (L "f" Unit (L "x" Unit (A (V "f") (A (A (V "n") (V "f")) (V "x"))))))) (V "n")))) $1) $3 }
+ |      term '-' term               { A (A (L "m" Unit (L "n" Unit (A (A (V "n") ((L "n" Unit (L "f" Unit (L "x" Unit (A (A (A (V "n") (L "g" Unit (L "h" Unit (A (V "h") (A (V "g") (V "f")))))) (L "u" Unit (V "x"))) (L "u" Unit (V "u")))))))) (V "m")))) $1) $3 }
+ |      'true'                      { (L "x" Unit (L "y" Unit (V "x"))) }
+ |      'false'                     { (L "x" Unit (L "y" Unit (V "y"))) }
 
 {
 parseError :: [Token] -> a

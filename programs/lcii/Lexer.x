@@ -55,7 +55,7 @@ $white+			    ;
 
 $digit+         { \pos s -> Num (read s) }
 
-[$lower \_ \- \%] [$alpha \_ \^ \' \* ! \% \/]* 	{ \pos s -> ID s }
+[$lower \_ \- \%] [$alpha $digit \_ \^ \' \* ! \% \/]* 	{ \pos s -> ID s }
 [$upper \_ \- \%] [$alpha $digit \_ \^ \' \* ! \% \/]* 	{ \pos s -> TyID s }
 
 {

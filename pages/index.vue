@@ -136,25 +136,6 @@
       </v-list>
     </v-navigation-drawer>
 
-    <!-- Dialog -->
-    <v-dialog v-model="editDialog" persistent max-width="600px">
-      <v-card>
-        <v-card-title>
-          <span class="headline">Edit Environment</span>
-        </v-card-title>
-        <v-card-text>
-          <v-text-field class="mb-5" label="Ξ: Type Context" :value="xi" v-model="editedXi" spellcheck="false" required></v-text-field>
-          <v-text-field class="mb-5" label="Γ: Term Context" :value="ga" v-model="editedGa" spellcheck="false" required></v-text-field>
-          <v-text-field label="λ: Term" :value="originalTerm" v-model="editedTerm" spellcheck="false" required></v-text-field>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn color="blue darken-1" text @click="saveEditedEnv" :disabled="editedXi == '' || editedGa == '' || editedTerm == ''">Save</v-btn>
-          <v-btn color="blue darken-1" text @click="editDialog = false">Close</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <v-main>
       <v-container
         class="fill-height pa-0"
@@ -170,66 +151,39 @@
               <v-list-item three-line class="pr-2">
                 <v-list-item-content class="pt-0 pb-2">
                   <v-row>
-                    <v-col cols="6" class="py-0">
-                      <div class="overline">TYPE CONTEXT</div>
-                      <v-list-item-title class="text--primary">
-                        {{ xi }}
-                      </v-list-item-title>
-                    </v-col>
-                    <v-col cols="6" class="py-0">
-                      <div class="overline">TERM CONTEXT</div>
-                      <v-list-item-title class="text--primary">
-                        {{ ga }}
-                      </v-list-item-title>
-
-                      <v-btn
-                        icon
-                        style="position: absolute; right: 20px; top: 10px;"
-                        @click.stop="editedXi = xi; editedGa = ga; editedTerm = originalTerm; editDialog = true"
+                      <v-col
+                        v-for="(param, i) in paramsState" :key="i"
+                        cols="6" class="py-0"
                       >
-                        <v-icon>mdi-square-edit-outline</v-icon>
-                      </v-btn>
-                    </v-col>
-                  </v-row>
-
-                  <v-divider class="mt-1"></v-divider>
-
-                  <v-row>
-                    <v-col cols="12" class="py-0">
-                      <div class="overline">LAMBDA TERM</div>
-                      <v-list-item-title class="text--primary">
-                        {{ originalTerm }}
-                      </v-list-item-title>
+                        <v-text-field v-if="param.visible"
+                          :label="param.display"
+                          v-model="param.value"
+                          spellcheck="false"
+                          hide-details
+                          flat
+                        ></v-text-field>
+                      </v-col>
 
                       <v-list-item-action style="position: absolute; right: 20px; bottom: -10px;">
                         <v-row class="mx-0 d-flex flex-row">
                           <div class="mr-3">
                             <div class="caption">Untyped</div>
                             <div class="mx-auto d-flex justify-center">
-                              <v-switch v-model="isUntyped" :disabled="isRunning" dense></v-switch>
+                              <v-switch v-model="paramsState.isUntyped.value" :disabled="isRunning" dense></v-switch>
                             </div>
                           </div>
                           <div class="d-flex align-center">
                             <v-btn
                               icon
-                              @click="runButton()"
+                              @click="run()"
                             >
                               <v-icon>mdi-play</v-icon>
                             </v-btn>
                           </div>
                         </v-row>
                       </v-list-item-action>
-                    </v-col>
                   </v-row>
-
                 </v-list-item-content>
-
-                <!-- <v-list-item-action class="mx-0 mt-8 d-flex flex-column">
-                  <div class="caption">Untyped</div>
-                  <div class="mx-auto">
-                    <v-switch v-model="isUntyped" :disabled="isRunning" dense></v-switch>
-                  </div>
-                </v-list-item-action> -->
               </v-list-item>
             </v-card>
 
@@ -244,7 +198,7 @@
                   style="min-height: 25px; color: white;"
                   v-for="(output,index) in outputs" :key="index"
                   :disabled="!output.hasOwnProperty('redex')"
-                  @click="num = output.redex; submitNum()"
+                  @click="paramsState.redexNumber.value = output.redex; submitNum()"
                 >
                   <v-list-item-title>
                     <span class="drawer-text" v-html="output.text"></span>
@@ -259,6 +213,7 @@
                 label="Input"
                 dense
                 solo
+                hide-details
                 @keyup.enter="enter()"
                 spellcheck="false"
                 class="my-0 customDark"
@@ -362,11 +317,15 @@
 </template>
 
 <script>
+import { params } from '~/assets/configs.js'
+
 import axios from 'axios'
-import { mapGetters } from 'vuex'
+import { mapState, mapActions, mapGetters } from 'vuex'
 
 export default {
   data: () => ({
+    params,
+    paramsState: {},
     inputFormHeight: 0,
     envHeight: 0,
     consoleHeight: 0,
@@ -379,12 +338,7 @@ export default {
     argumentEmptyMessage: '引数を指定してください．（:helpでヘルプ）',
     // baseUrl: 'http://www.sofsci.cs.gunma-u.ac.jp/ii/api/',
     baseUrl: 'http://localhost/',
-    isUntyped: false,
     isRunning: false,
-    editDialog: false,
-    editedXi: '',
-    editedGa: '',
-    editedTerm: '',
     fab: false,
     historyDrawer: false,
     examplesDrawer: false,
@@ -393,18 +347,13 @@ export default {
     outputs: [],
     history: [],
     defs: [],
-    xi: '',
-    ga: '',
-    originalTerm: '',
-    term: '',
-    num: '',
   }),
   computed: {
     ...mapGetters([
       'typedExamples',
       'untypedExamples',
-      'helps'
-    ])
+      'helps',
+    ]),
   },
   watch: {
     outputs: function () {
@@ -415,14 +364,11 @@ export default {
     }
   },
   methods: {
-    test () {
-      console.log('test')
-    },
     enter () {
       const input = this.input
 
       if (!input) return
-      
+
       this.input = ''
 
       let match
@@ -478,7 +424,7 @@ export default {
 
       // Submit Number
       if (this.isRunning && input && !isNaN(Number(input))) {
-        this.num = input
+        this.paramsState.redexNumber.value = input
         this.submitNum()
         return
       }
@@ -492,7 +438,7 @@ export default {
           return
         }
         this.outputs.push( { text: 'Ξ: ' + value.replace('<', '&lt;').replace('>', '&gt;') } )
-        this.xi = value
+        this.paramsState.typeContext.value = value
         return
       }
       if (cmd === 'ga') {
@@ -501,7 +447,7 @@ export default {
           return
         }
         this.outputs.push( { text: 'Γ: ' + value.replace('<', '&lt;').replace('>', '&gt;') } )
-        this.ga = value
+        this.paramsState.termContext.value = value
         return
       }
       if (cmd === 'lambda' || cmd === 'l') {
@@ -525,17 +471,21 @@ export default {
         }
 
         this.outputs.push( { text: 'λ-term: ' + newTerm.replace('<', '&lt;').replace('>', '&gt;') } )
-        this.originalTerm = newTerm
+        this.paramsState.initialLambdaTerm.value = newTerm
         return
       }
       if (cmd === 'type' || cmd === 't') {
-        let newTerm = value
-
         this.typingCheck()
         return
       }
       if (cmd === 'run' || cmd === 'r') {
-        this.run(value)
+        if (value === '-untyped' || value === '-u') {
+          this.paramsState.isUntyped.value = true
+        } else {
+          this.paramsState.isUntyped.value = false
+        }
+
+        this.run()
         return
       }
       if (cmd === 'show' || cmd === 's') {
@@ -576,50 +526,31 @@ export default {
         return
       }
     },
-    run (value) {
-      if (this.originalTerm === this.emptyToken) {
+    run () {
+      if (this.paramsState.initialLambdaTerm === this.emptyToken) {
         this.outputs.push( { text: 'ラムダ式をセットしてください．（:helpでヘルプ）' } )
         return
       }
 
-      this.term = this.originalTerm
-
-      if (value === '-untyped' || value === '-u') {
-        this.isUntyped = true
-      } else {
-        this.isUntyped = false
-      }
-      this.isRunning = true
-      this.outputs.push(
-        { text: '<br>' },
-        { text: '> run LCII' + (this.isUntyped ? '(Untyped)' : '') },
-        { text: '<br>' }
-      )
-      this.submitTerm()
-    },
-    runButton () {
-      if (this.originalTerm === this.emptyToken) {
-        this.outputs.push( { text: 'ラムダ式をセットしてください．（:helpでヘルプ）' } )
-        return
-      }
-
-      this.term = this.originalTerm
+      this.paramsState.lambdaTerm.value = this.paramsState.initialLambdaTerm.value
 
       this.isRunning = true
       this.outputs.push(
         { text: '<br>' },
-        { text: '> run LCII' + (this.isUntyped ? '(Untyped)' : '') },
+        { text: '> run LCII' + (this.paramsState.isUntyped.value ? '(Untyped)' : '') },
         { text: '<br>' }
       )
       this.submitTerm()
     },
     submitTerm () {
+      this.paramsState.mode.value = 'init'
+
       let params = new URLSearchParams()
-          params.append('xi', this.xi)
-          params.append('ga', this.ga)
-          params.append('term', this.term)
-          params.append('isUntyped', this.isUntyped)
-          params.append('mode', 'init')
+
+      for(var param in this.paramsState) {
+        params.append(this.paramsState[param].name, this.paramsState[param].value)
+        console.log(this.paramsState[param].name + ': ' + this.paramsState[param].value)
+      }
 
       var vm = this
 
@@ -638,11 +569,11 @@ export default {
           vm.pushResults(optSplit)
 
           if (opt.indexOf('Normal') === -1 && opt.indexOf('Error') === -1) {
-            vm.term = optSplit[0].replace(vm.delHTML,'')
-            console.log(vm.term)
+            vm.paramsState.lambdaTerm.value = optSplit[0].replace(vm.delHTML,'')
+            console.log(vm.paramsState.lambdaTerm.value)
           } else {
             vm.isRunning = false
-            vm.term = vm.emptyToken
+            vm.paramsState.lambdaTerm.value = vm.emptyToken
             
             vm.outputs.push( { text: '<br>' }, { text: vm.initialMessage } )
           }
@@ -653,19 +584,20 @@ export default {
         })
     },
     submitNum () {
+      this.paramsState.mode.value = 'red'
+
       let params = new URLSearchParams()
-          params.append('xi', this.xi)
-          params.append('ga', this.ga)
-          params.append('term', this.term)
-          params.append('num', this.num)
-          params.append('isUntyped', this.isUntyped)
-          params.append('mode', 'red')
+
+      for(var param in this.paramsState) {
+        params.append(this.paramsState[param].name, this.paramsState[param].value)
+        console.log(this.paramsState[param].name + ': ' + this.paramsState[param].value)
+      }
 
       var vm = this
 
       axios.post(this.baseUrl + 'api.php', params)
         .then(function(response){
-          vm.outputs.push( { text: '> ' + vm.num }, { text: '<br>' } )
+          vm.outputs.push( { text: '> ' + vm.paramsState.redexNumber.value }, { text: '<br>' } )
           var opt = response.data
           console.log(opt)
 
@@ -679,14 +611,14 @@ export default {
           }
           if (opt.indexOf('Normal') === -1 && opt.indexOf('Error') === -1) {
             if (opt.indexOf('α') !== -1) {
-              vm.term = optSplit[1].replace(vm.delHTML,'')
+              vm.paramsState.lambdaTerm.value = optSplit[1].replace(vm.delHTML,'')
             } else {
-              vm.term = optSplit[0].replace(vm.delHTML,'')
+              vm.paramsState.lambdaTerm.value = optSplit[0].replace(vm.delHTML,'')
             }
-            console.log(vm.term)
+            console.log(vm.paramsState.lambdaTerm.value)
           } else {
             vm.isRunning = false
-            vm.term = vm.emptyToken
+            vm.paramsState.lambdaTerm.value = vm.emptyToken
             
             vm.outputs.push( { text: '<br>' }, { text: vm.initialMessage } )
           }
@@ -697,16 +629,19 @@ export default {
         })
     },
     typingCheck () {
-      if (this.originalTerm === this.emptyToken) {
-        this.outputs.push( { text: 'λ式が入力されていません．' } )
+      if (this.paramsState.initialLambdaTerm === this.emptyToken) {
+        this.outputs.push( { text: 'ラムダ式をセットしてください．（:helpでヘルプ）' } )
         return
       }
 
+      this.paramsState.mode.value = 'check'
+
       let params = new URLSearchParams()
-          params.append('xi', this.xi)
-          params.append('ga', this.ga)
-          params.append('term', this.originalTerm)
-          params.append('mode', 'check')
+
+      for(var param in this.paramsState) {
+        params.append(this.paramsState[param].name, this.paramsState[param].value)
+        console.log(this.paramsState[param].name + ': ' + this.paramsState[param].value)
+      }
 
       var vm = this
 
@@ -754,26 +689,20 @@ export default {
       this.outputs.push( ...addOutputs )
     },
     addExampleTypedTerm (example) {
-      this.isUntyped = false
-      this.originalTerm = example.term
-      this.term = example.term
-      this.xi = example.envType
-      this.ga = example.envTerm
+      this.paramsState.isUntyped.value = false
+      this.paramsState.initialLambdaTerm.value = example.term
+      this.paramsState.lambdaTerm.value = example.term
+      this.paramsState.typeContext.value = example.envType
+      this.paramsState.termContext.value = example.envTerm
       this.examplesDrawer = false
     },
     addExampleUntypedTerm (example) {
-      this.isUntyped = true
-      this.originalTerm = example.term
-      this.term = example.term
-      this.xi = this.emptyToken
-      this.ga = this.emptyToken
+      this.paramsState.paramsState.isUntyped.value.value = true
+      this.paramsState.initialLambdaTerm.value = example.term
+      this.paramsState.lambdaTerm.value = example.term
+      this.paramsState.typeContext.value = this.emptyToken
+      this.paramsState.termContext.value = this.emptyToken
       this.examplesDrawer = false
-    },
-    saveEditedEnv () {
-      this.xi = this.editedXi
-      this.ga = this.editedGa
-      this.originalTerm = this.editedTerm
-      this.editDialog = false
     },
     isVarExists (input) {
       if (this.defs.length === 0) return false
@@ -787,10 +716,10 @@ export default {
     init (isNewLine) {
       this.isRunning = false
 
-      this.originalTerm = this.emptyToken
-      this.term = this.emptyToken
-      this.ga = this.emptyToken
-      this.xi = this.emptyToken
+      this.paramsState.initialLambdaTerm.value = this.emptyToken
+      this.paramsState.lambdaTerm.value = this.emptyToken
+      this.paramsState.typeContext.value = this.emptyToken
+      this.paramsState.termContext.value = this.emptyToken
       
       if (isNewLine) {
         this.outputs.push( { text: '<br>' }, { text: this.initialMessage } )
@@ -813,6 +742,10 @@ export default {
     }
   },
   created () {
+    for(var param in this.params) {
+      this.paramsState[param] = this.params[param]
+      this.paramsState[param].value = this.params[param].default
+    }
     this.init()
   },
   mounted () {
@@ -830,16 +763,6 @@ export default {
 <style>
 .drawer-text {
   font-size: 13px;
-}
-.v-text-field__details {
-  min-height: 0px !important;
-  display: none !important;
-}
-.v-messages {
-  min-height: 0px !important;
-}
-.v-input__slot {
-  margin: 0px !important;
 }
 .theme--dark.v-divider {
   border-color: #424242 !important;
