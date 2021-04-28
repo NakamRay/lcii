@@ -196,7 +196,7 @@
               <v-list class="py-0">
                 <v-list-item
                   style="min-height: 25px; color: white;"
-                  v-for="(output,index) in outputs" :key="index"
+                  v-for="(output,index) in console" :key="index"
                   :disabled="!output.hasOwnProperty('redex')"
                   @click="paramsState.redexNumber.value = output.redex; submitNum()"
                 >
@@ -317,46 +317,64 @@
 </template>
 
 <script>
-import { params } from '~/assets/configs.js'
-
 import axios from 'axios'
-import { mapState, mapActions, mapGetters } from 'vuex'
+import { mapState, mapMutations, mapActions, mapGetters } from 'vuex'
+
+import { params } from '~/assets/configs.js'
+import { helps } from '~/assets/helps.js'
+import { typedExamples, untypedExamples } from '~/assets/examples.js'
 
 export default {
   data: () => ({
+    // for axios
     params,
     paramsState: {},
+    // baseUrl: 'http://www.sofsci.cs.gunma-u.ac.jp/ii/api/',
+    baseUrl: 'http://localhost/',
+    api: 'api.php',
+
+    // for examples
+    typedExamples,
+    untypedExamples,
+
+    // for helps
+    helps,
+
+    // for layouts
     inputFormHeight: 0,
     envHeight: 0,
     consoleHeight: 0,
+
+    // for drawers
+    historyDrawer: false,
+    examplesDrawer: false,
+    defsDrawer: false,
+
+    // for lcii
     delHTML: /<([^>]*"[^>]|[^>=])*>/g,
     popInj: /<[^>"]*=[^>"]*>/g,
-    // delHTML: /<("[^"]*"|'[^']*'|[^'">])*>/g,
     emptyToken: 'Empty',
     initialMessage: ':help :h ヘルプ',
     invalidInputMessage: '無効な入力です．',
     argumentEmptyMessage: '引数を指定してください．（:helpでヘルプ）',
-    // baseUrl: 'http://www.sofsci.cs.gunma-u.ac.jp/ii/api/',
-    baseUrl: 'http://localhost/',
+    connectionErrorMessage: 'サーバとの通信中にエラーが発生しました．',
     isRunning: false,
     fab: false,
-    historyDrawer: false,
-    examplesDrawer: false,
-    defsDrawer: false,
     input: '',
-    outputs: [],
     history: [],
     defs: [],
   }),
   computed: {
+    ...mapMutations([
+      'initConsole',
+      'addLine'
+    ]),
     ...mapGetters([
-      'typedExamples',
-      'untypedExamples',
-      'helps',
+      'console'
     ]),
   },
   watch: {
-    outputs: function () {
+    console: function () {
       this.$nextTick(function() {
         var outputWindow = this.$el.querySelector('#outputConsole')
         outputWindow.scrollTop = outputWindow.scrollHeight
@@ -391,20 +409,20 @@ export default {
         const rhs = '('+ input.replace(match[0], '') + ')'
 
         if (!rhs) {
-          this.outputs.push( { text: this.invalidInputMessage } )
+          this.$store.commit('addLine', { text: this.invalidInputMessage } )
           return
         }
 
         for (let i = 0; i < this.defs.length; i++) {
           if (this.defs[i].binder === lhs) {
             this.defs[i].exp = rhs
-            this.outputs.push( { text: `${lhs} = ${rhs.replace('<', '&lt;').replace('>', '&gt;')}` } )
+            this.$store.commit('addLine', { text: `${lhs} = ${rhs.replace('<', '&lt;').replace('>', '&gt;')}` } )
             return
           }
         }
 
         this.defs.push( { binder: lhs, exp: rhs } )
-        this.outputs.push( { text: `${lhs} = ${rhs.replace('<', '&lt;').replace('>', '&gt;')}` } )
+        this.$store.commit('addLine', { text: `${lhs} = ${rhs.replace('<', '&lt;').replace('>', '&gt;')}` } )
         console.log(this.defs)
         return
       }
@@ -415,7 +433,7 @@ export default {
         if (this.defs.length > 0) {
           for (let i = 0; i < this.defs.length; i++) {
             if (this.defs[i].binder === match[0]) {
-              this.outputs.push( { text: `${match[0]} = ${this.defs[i].exp.replace('<', '&lt;').replace('>', '&gt;')}` } )
+              this.$store.commit('addLine', { text: `${match[0]} = ${this.defs[i].exp.replace('<', '&lt;').replace('>', '&gt;')}` } )
               return
             }
           }
@@ -429,30 +447,30 @@ export default {
         return
       }
 
-      this.outputs.push(this.invalidInputMessage)
+      this.$store.commit('addLine', { text: this.invalidInputMessage } )
     },
     command (cmd, value) {
       if (cmd === 'xi') {
         if (!value) {
-          this.outputs.push( { text: this.argumentEmptyMessage } )
+          this.$store.commit('addLine', { text: this.argumentEmptyMessage } )
           return
         }
-        this.outputs.push( { text: 'Ξ: ' + value.replace('<', '&lt;').replace('>', '&gt;') } )
+        this.$store.commit('addLine', { text: 'Ξ: ' + value.replace('<', '&lt;').replace('>', '&gt;') } )
         this.paramsState.typeContext.value = value
         return
       }
       if (cmd === 'ga') {
         if (!value) {
-          this.outputs.push( { text: this.argumentEmptyMessage } )
+          this.$store.commit('addLine', { text: this.argumentEmptyMessage } )
           return
         }
-        this.outputs.push( { text: 'Γ: ' + value.replace('<', '&lt;').replace('>', '&gt;') } )
+        this.$store.commit('addLine', { text: 'Γ: ' + value.replace('<', '&lt;').replace('>', '&gt;') } )
         this.paramsState.termContext.value = value
         return
       }
       if (cmd === 'lambda' || cmd === 'l') {
         if (!value) {
-          this.outputs.push( { text: this.argumentEmptyMessage } )
+          this.$store.commit('addLine', { text: this.argumentEmptyMessage } )
           return
         }
 
@@ -470,7 +488,7 @@ export default {
           }
         }
 
-        this.outputs.push( { text: 'λ-term: ' + newTerm.replace('<', '&lt;').replace('>', '&gt;') } )
+        this.$store.commit('addLine', { text: 'λ-term: ' + newTerm.replace('<', '&lt;').replace('>', '&gt;') } )
         this.paramsState.initialLambdaTerm.value = newTerm
         return
       }
@@ -489,12 +507,12 @@ export default {
         return
       }
       if (cmd === 'show' || cmd === 's') {
-        this.outputs.push( { text: '<br>' }, { text: 'Definitions' } )
+        this.$store.commit('addLines', [{ text: '<br>' }, { text: 'Definitions' }] )
         if (this.defs.length === 0) {
-          this.outputs.push( { text: 'None' } )
+          this.$store.commit('addLine', { text: 'None' } )
         }
         this.defs.forEach(def => {
-          this.outputs.push( { text: `${def.binder} = ${def.exp.replace('<', '&lt;').replace('>', '&gt;')}` } )
+          this.$store.commit('addLine', { text: `${def.binder} = ${def.exp.replace('<', '&lt;').replace('>', '&gt;')}` } )
         })
         return
       }
@@ -503,43 +521,43 @@ export default {
         return
       }
       if (cmd === 'quit' || cmd === 'q') {
-        this.outputs.push( { text: '> quit' } )
+        this.$store.commit('addLine', { text: '> quit' } )
         this.init(true)
         return
       }
       if (cmd === 'help' || cmd === 'h') {
         const helps = this.helps
-        this.outputs.push( { text: '<br>' }, { text: '<b>Help</b>' } )
+        this.$store.commit('addLines', [{ text: '<br>' }, { text: '<b>Help</b>' }] )
         for (let i = 0; i < helps.length; i++) {
-          this.outputs.push({ text: `Command: ${helps[i].cmd} ${helps[i].shortCmd ? helps[i].shortCmd : ''}` } )
+          this.$store.commit('addLine', { text: `Command: ${helps[i].cmd} ${helps[i].shortCmd ? helps[i].shortCmd : ''}` } )
 
           if (helps[i].options.length > 0) {
             let option = ''
             for(let j = 0; j < helps[i].options.length; j++) {
               option += ` ${helps[i].options[j]}`
             }
-            this.outputs.push({ text: `Option:${option}` } )
+            this.$store.commit('addLine', { text: `Option:${option}` } )
           }
           
-          this.outputs.push({ text: `${helps[i].desc}` }, { text: '<br>' } )
+          this.$store.commit('addLines', [{ text: `${helps[i].desc}` }, { text: '<br>' }] )
         }
         return
       }
     },
     run () {
       if (this.paramsState.initialLambdaTerm === this.emptyToken) {
-        this.outputs.push( { text: 'ラムダ式をセットしてください．（:helpでヘルプ）' } )
+        this.$store.commit('addLine', { text: 'ラムダ式をセットしてください．（:helpでヘルプ）' } )
         return
       }
 
       this.paramsState.lambdaTerm.value = this.paramsState.initialLambdaTerm.value
 
       this.isRunning = true
-      this.outputs.push(
+      this.$store.commit('addLines', [
         { text: '<br>' },
         { text: '> run LCII' + (this.paramsState.isUntyped.value ? '(Untyped)' : '') },
         { text: '<br>' }
-      )
+      ])
       this.submitTerm()
     },
     submitTerm () {
@@ -554,12 +572,12 @@ export default {
 
       var vm = this
 
-      axios.post(this.baseUrl + 'api.php', params)
+      axios.post(this.baseUrl + this.api, params)
         .then(function(response){
           var opt = response.data
           console.log(opt)
           if (opt.includes('Parse Error')) {
-            vm.outputs.push( { text: '無効な入力です．画面右上の「USAGE」からラムダ式または型環境の記法を参照してください．' } )
+            vm.$store.commit('addLine', { text: '無効な入力です．画面右上の「USAGE」からラムダ式または型環境の記法を参照してください．' } )
             vm.init(true)
             return
           }
@@ -575,11 +593,11 @@ export default {
             vm.isRunning = false
             vm.paramsState.lambdaTerm.value = vm.emptyToken
             
-            vm.outputs.push( { text: '<br>' }, { text: vm.initialMessage } )
+            vm.$store.commit('addLines', [{ text: '<br>' }, { text: vm.initialMessage }] )
           }
         })
         .catch(function(err){
-          vm.outputs.push( { text: 'サーバとの通信中にエラーが発生しました．' } )
+          vm.$store.commit('addLine', { text: vm.connectionErrorMessage } )
           console.error(err)
         })
     },
@@ -595,9 +613,9 @@ export default {
 
       var vm = this
 
-      axios.post(this.baseUrl + 'api.php', params)
+      axios.post(this.baseUrl + this.api, params)
         .then(function(response){
-          vm.outputs.push( { text: '> ' + vm.paramsState.redexNumber.value }, { text: '<br>' } )
+          vm.$store.commit('addLines', [{ text: '> ' + vm.paramsState.redexNumber.value }, { text: '<br>' }] )
           var opt = response.data
           console.log(opt)
 
@@ -606,7 +624,7 @@ export default {
           vm.pushResults(optSplit)
 
           if (opt.indexOf('maximum') !== -1) {
-            vm.outputs.push( { text: '簡約したいRedexの番号を入力してください．' }, { text: '<br>' } )
+            vm.$store.commit('addLines', [{ text: '簡約したいRedexの番号を入力してください．' }, { text: '<br>' }] )
             return
           }
           if (opt.indexOf('Normal') === -1 && opt.indexOf('Error') === -1) {
@@ -620,17 +638,17 @@ export default {
             vm.isRunning = false
             vm.paramsState.lambdaTerm.value = vm.emptyToken
             
-            vm.outputs.push( { text: '<br>' }, { text: vm.initialMessage } )
+            vm.$store.commit('addLines', [{ text: '<br>' }, { text: vm.initialMessage }] )
           }
         })
         .catch(function(err){
-          vm.outputs.push( { text: 'サーバとの通信中にエラーが発生しました．' } )
+          vm.$store.commit('addLine', { text: vm.connectionErrorMessage } )
           console.error(err)
         })
     },
     typingCheck () {
       if (this.paramsState.initialLambdaTerm === this.emptyToken) {
-        this.outputs.push( { text: 'ラムダ式をセットしてください．（:helpでヘルプ）' } )
+        this.$store.commit('addLine', { text: 'ラムダ式をセットしてください．（:helpでヘルプ）' } )
         return
       }
 
@@ -645,18 +663,18 @@ export default {
 
       var vm = this
 
-      axios.post(this.baseUrl + 'api.php', params)
+      axios.post(this.baseUrl + this.api, params)
         .then(function(response){
           var opt = response.data
 
           if (opt === '') {
-            vm.outputs.push( { text: 'ラムダ式が型無しです．' } )
+            vm.$store.commit('addLine', { text: 'ラムダ式が型無しです．' } )
           } else {
-            vm.outputs.push( { text: opt } )
+            vm.$store.commit('addLine', { text: opt } )
           }
         })
         .catch(function(err){
-          vm.outputs.push( { text: 'サーバとの通信中にエラーが発生しました．' } )
+          vm.$store.commit('addLine', { text: vm.connectionErrorMessage } )
           console.error(err)
         })
     },
@@ -686,7 +704,7 @@ export default {
         }
       }
 
-      this.outputs.push( ...addOutputs )
+      this.$store.commit('addLines', addOutputs )
     },
     addExampleTypedTerm (example) {
       this.paramsState.isUntyped.value = false
@@ -697,7 +715,7 @@ export default {
       this.examplesDrawer = false
     },
     addExampleUntypedTerm (example) {
-      this.paramsState.paramsState.isUntyped.value.value = true
+      this.paramsState.isUntyped.value = true
       this.paramsState.initialLambdaTerm.value = example.term
       this.paramsState.lambdaTerm.value = example.term
       this.paramsState.typeContext.value = this.emptyToken
@@ -722,9 +740,9 @@ export default {
       this.paramsState.termContext.value = this.emptyToken
       
       if (isNewLine) {
-        this.outputs.push( { text: '<br>' }, { text: this.initialMessage } )
+        this.$store.commit('addLines', [{ text: '<br>' }, { text: this.initialMessage }] )
       } else {
-        this.outputs.push( { text: this.initialMessage } )
+        this.$store.commit('addLine', { text: this.initialMessage } )
       }
     },
     closeDrawer () {
@@ -733,8 +751,8 @@ export default {
       this.defsDrawer = false
     },
     clear () {
-      this.history.push( ...this.outputs, { text: '---------------- Clear ----------------' } )
-      this.outputs = []
+      this.history.push( ...this.console, { text: '---------------- Clear ----------------' } )
+      this.$store.commit('initConsole')
       this.init()
     },
     updateConsoleHeight () {
