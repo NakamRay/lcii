@@ -333,6 +333,13 @@ export default {
     baseUrl: 'http://localhost/',
     api: 'api.php',
 
+    // for console
+    initialMessage: ':help :h ヘルプ',
+    invalidInputMessage: '無効な入力です．',
+    argumentEmptyMessage: '引数を指定してください．（:helpでヘルプ）',
+    connectionErrorMessage: 'サーバとの通信中にエラーが発生しました．',
+    cmdReg: /^:[a-z]+\s*/g,
+
     // for examples
     typedExamples,
     untypedExamples,
@@ -350,16 +357,14 @@ export default {
     examplesDrawer: false,
     defsDrawer: false,
 
+    // for float button
+    fab: false,
+
     // for lcii
     delHTML: /<([^>]*"[^>]|[^>=])*>/g,
     popInj: /<[^>"]*=[^>"]*>/g,
     emptyToken: 'Empty',
-    initialMessage: ':help :h ヘルプ',
-    invalidInputMessage: '無効な入力です．',
-    argumentEmptyMessage: '引数を指定してください．（:helpでヘルプ）',
-    connectionErrorMessage: 'サーバとの通信中にエラーが発生しました．',
     isRunning: false,
-    fab: false,
     input: '',
     history: [],
     defs: [],
@@ -392,7 +397,7 @@ export default {
       let match
 
       // Command
-      match = input.match(/^:[a-z]+\s*/g)
+      match = input.match(this.cmdReg)
       if (match) {
         const cmd = input.match(/(?<=^:)[a-z]+/g)[0]
         const value = input.replace(match[0], '')
