@@ -1,106 +1,10 @@
 <template>
   <v-container fluid>
-    <v-navigation-drawer
-      v-model="historyDrawer"
-      disable-resize-watcher
-      temporary
-      app
-      right
-      width="500"
-      class="customDark"
-    >
-      <v-list class="py-0">
-        <v-subheader style="height: 49px;">
-          <h1>HISTORY</h1>
-          <v-spacer></v-spacer>
-          <v-btn icon @click.stop="historyDrawer = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </v-subheader>
-        <v-divider></v-divider>
-        <v-list-item
-          style="min-height: 25px;"
-          v-for="(ahistory,index) in history" :key="index"
-        >
-          <v-list-item-title>
-            <span class="drawer-text" v-html="ahistory.text"></span>
-          </v-list-item-title>
-        </v-list-item>
-      </v-list>
-    </v-navigation-drawer>
+    <HistoryDrawer/>
+    <ExamplesDrawer @update-params="updateParams"/>
 
     <v-navigation-drawer
-      v-model="examplesDrawer"
-      disable-resize-watcher
-      temporary
-      app
-      right
-      width="500"
-    >
-      <v-list class="py-0">
-        <v-subheader style="height: 49px;">
-          <h1>EXAMPLES</h1>
-          <v-spacer></v-spacer>
-          <v-btn icon @click.stop="examplesDrawer = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </v-subheader>
-        <v-divider></v-divider>
-        <v-tabs>
-          <v-tab>Typed</v-tab>
-          <v-tab>Untyped</v-tab>
-          <v-tab-item>
-            <v-list-item
-              style="min-height: 15px;"
-              v-for="(example,index) in typedExamples" :key="index"
-              v-ripple="{ class: 'red--text' }"
-              @click.stop="addExampleTypedTerm(example)"
-            >
-              <v-list-item-title>
-                <v-alert
-                  class="py-1 my-1"
-                  color="red"
-                  border="left"
-                  elevation="2"
-                  colored-border
-                >
-                  <div class="drawer-text my-2">Ξ: {{example.envType}}</div>
-                  <v-divider class="my-1"></v-divider>
-                  <div class="drawer-text my-2">Γ: {{example.envTerm}}</div>
-                  <v-divider class="my-1"></v-divider>
-                  <div class="overline">TERM</div>
-                  <span class="drawer-text">{{example.term}}</span>
-                </v-alert>
-              </v-list-item-title>
-            </v-list-item>
-          </v-tab-item>
-          <v-tab-item>
-            <v-list-item
-              style="min-height: 15px;"
-              v-for="(example,index) in untypedExamples" :key="index"
-              v-ripple="{ class: 'red--text' }"
-              @click.stop="addExampleUntypedTerm(example)"
-            >
-              <v-list-item-title>
-                <v-alert
-                  class="py-2 my-1"
-                  color="red"
-                  border="left"
-                  elevation="2"
-                  colored-border
-                >
-                  <div class="overline">TERM</div>
-                  <span class="drawer-text">{{example.term}}</span>
-                </v-alert>
-              </v-list-item-title>
-            </v-list-item>
-          </v-tab-item>
-        </v-tabs>
-      </v-list>
-    </v-navigation-drawer>
-
-    <v-navigation-drawer
-      v-model="defsDrawer"
+      v-model="features.definitions.drawer"
       disable-resize-watcher
       temporary
       app
@@ -111,7 +15,7 @@
         <v-subheader style="height: 49px;">
           <h1>DEFINITIONS</h1>
           <v-spacer></v-spacer>
-          <v-btn icon @click.stop="defsDrawer = false">
+          <v-btn icon @click.stop="features.definitions.drawer = false">
             <v-icon>mdi-close</v-icon>
           </v-btn>
         </v-subheader>
@@ -151,37 +55,19 @@
               <v-list-item three-line class="pr-2">
                 <v-list-item-content class="pt-0 pb-2">
                   <v-row>
-                      <v-col
-                        v-for="(param, i) in paramsState" :key="i"
-                        cols="6" class="py-0"
-                      >
-                        <v-text-field v-if="param.visible"
-                          :label="param.display"
-                          v-model="param.value"
-                          spellcheck="false"
-                          hide-details
-                          flat
-                        ></v-text-field>
-                      </v-col>
-
-                      <v-list-item-action style="position: absolute; right: 20px; bottom: -10px;">
-                        <v-row class="mx-0 d-flex flex-row">
-                          <div class="mr-3">
-                            <div class="caption">Untyped</div>
-                            <div class="mx-auto d-flex justify-center">
-                              <v-switch v-model="paramsState.isUntyped.value" :disabled="isRunning" dense></v-switch>
-                            </div>
-                          </div>
-                          <div class="d-flex align-center">
-                            <v-btn
-                              icon
-                              @click="run()"
-                            >
-                              <v-icon>mdi-play</v-icon>
-                            </v-btn>
-                          </div>
-                        </v-row>
-                      </v-list-item-action>
+                    <v-col
+                      v-for="(param, key) in params" :key="key"
+                      :cols="param.half ? 6 : 12" class="py-0"
+                    >
+                      <v-text-field
+                        v-if="param.visible"
+                        :label="param.display"
+                        v-model="param.value"
+                        spellcheck="false"
+                        hide-details
+                        flat
+                      ></v-text-field>
+                    </v-col>
                   </v-row>
                 </v-list-item-content>
               </v-list-item>
@@ -193,12 +79,10 @@
               id="outputConsole"
               class="customDark"
             >
-              <v-list class="py-0">
+              <v-list class="py-3">
                 <v-list-item
                   style="min-height: 25px; color: white;"
                   v-for="(output,index) in console" :key="index"
-                  :disabled="!output.hasOwnProperty('redex')"
-                  @click="paramsState.redexNumber.value = output.redex; submitNum()"
                 >
                   <v-list-item-title>
                     <span class="drawer-text" v-html="output.text"></span>
@@ -226,27 +110,13 @@
             class="text-center pl-0 d-none d-sm-flex"
           >
             <v-row class="flex-column ma-0">
-              <v-col class="px-0" style="flex-grow: unset;">
-                <v-btn icon @click="clear">
-                  <v-icon>mdi-delete</v-icon>
-                </v-btn>
-              </v-col>
-
-              <v-col class="px-0" style="flex-grow: unset;">
-                <v-btn icon @click="closeDrawer(); historyDrawer = !historyDrawer">
-                  <v-icon>mdi-history</v-icon>
-                </v-btn>
-              </v-col>
-
-              <v-col class="px-0" style="flex-grow: unset;">
-                <v-btn icon @click="closeDrawer(); examplesDrawer = !examplesDrawer">
-                  <v-icon>mdi-lambda</v-icon>
-                </v-btn>
-              </v-col>
-
-              <v-col class="px-0" style="flex-grow: unset;">
-                <v-btn icon @click="closeDrawer(); defsDrawer = !defsDrawer">
-                  <v-icon>mdi-order-alphabetical-ascending</v-icon>
+              <v-col
+                v-for="(feature, key) in features" :key="key"
+                class="px-0"
+                style="flex-grow: unset;"
+              >
+                <v-btn icon @click="key === 'clear' ? clear() : feature.hasOwnProperty('drawer') ? openDrawer(feature) : run()">
+                  <v-icon v-text="feature.icon"></v-icon>
                 </v-btn>
               </v-col>
             </v-row>
@@ -266,49 +136,23 @@
           <template v-slot:activator>
             <v-btn
               v-model="fab"
-              color="blue darken-2"
-              dark
               fab
+              dark
+              color="blue darken-2"
             >
               <v-icon v-if="fab">mdi-close</v-icon>
               <v-icon v-else>mdi-menu</v-icon>
             </v-btn>
           </template>
           <v-btn
+            v-for="(feature, key) in features" :key="key"
             fab
             dark
             small
             color="purple"
-            @click="closeDrawer(); defsDrawer = !defsDrawer"
+            @click="key === 'clear' ? clear() : feature.hasOwnProperty('drawer') ? openDrawer(feature) : run()"
           >
-            <v-icon>mdi-order-alphabetical-ascending</v-icon>
-          </v-btn>
-          <v-btn
-            fab
-            dark
-            small
-            color="green"
-            @click="closeDrawer(); examplesDrawer = !examplesDrawer"
-          >
-            <v-icon>mdi-lambda</v-icon>
-          </v-btn>
-          <v-btn
-            fab
-            dark
-            small
-            color="indigo"
-            @click="closeDrawer(); historyDrawer = !historyDrawer"
-          >
-            <v-icon>mdi-history</v-icon>
-          </v-btn>
-          <v-btn
-            fab
-            dark
-            small
-            color="red"
-            @click="clear"
-          >
-            <v-icon>mdi-delete</v-icon>
+            <v-icon v-text="feature.icon"></v-icon>
           </v-btn>
         </v-speed-dial>
       </v-container>
@@ -320,15 +164,23 @@
 import axios from 'axios'
 import { mapState, mapMutations, mapActions, mapGetters } from 'vuex'
 
-import { params } from '~/assets/configs.js'
+import { paramsSettings } from '~/assets/configs.js'
+import { features } from '~/assets/features.js'
 import { helps } from '~/assets/helps.js'
-import { typedExamples, untypedExamples } from '~/assets/examples.js'
+import { examples } from '~/assets/examples.js'
+
+import HistoryDrawer from '~/components/drawers/HistoryDrawer.vue'
+import ExamplesDrawer from '~/components/drawers/ExamplesDrawer.vue'
 
 export default {
-  data: () => ({
+  components: {
+    HistoryDrawer,
+    ExamplesDrawer,
+  },
+  data(){return{
     // for axios
-    params,
-    paramsState: {},
+    paramsSettings,
+    params: {},
     // baseUrl: 'http://www.sofsci.cs.gunma-u.ac.jp/ii/api/',
     baseUrl: 'http://localhost/',
     api: 'api.php',
@@ -337,12 +189,12 @@ export default {
     initialMessage: ':help :h ヘルプ',
     invalidInputMessage: '無効な入力です．',
     argumentEmptyMessage: '引数を指定してください．（:helpでヘルプ）',
+    invalidArgumentMessage: '引数が不正です．（:helpでヘルプ）',
     connectionErrorMessage: 'サーバとの通信中にエラーが発生しました．',
-    cmdReg: /^:[a-z]+\s*/g,
+    cmdReg: /(?<=^:)[a-z]+/g,
 
     // for examples
-    typedExamples,
-    untypedExamples,
+    examples,
 
     // for helps
     helps,
@@ -352,10 +204,8 @@ export default {
     envHeight: 0,
     consoleHeight: 0,
 
-    // for drawers
-    historyDrawer: false,
-    examplesDrawer: false,
-    defsDrawer: false,
+    // for features
+    features,
 
     // for float button
     fab: false,
@@ -366,16 +216,20 @@ export default {
     emptyToken: 'Empty',
     isRunning: false,
     input: '',
-    history: [],
     defs: [],
-  }),
+  }},
   computed: {
     ...mapMutations([
       'initConsole',
-      'addLine'
+      'addLine',
+      'addHistory',
+      'updateVariables'
     ]),
     ...mapGetters([
-      'console'
+      'console',
+      'history',
+      'variables',
+      'getState'
     ]),
   },
   watch: {
@@ -384,6 +238,9 @@ export default {
         var outputWindow = this.$el.querySelector('#outputConsole')
         outputWindow.scrollTop = outputWindow.scrollHeight
       })
+    },
+    params: function () {
+      console.log(this.params)
     }
   },
   methods: {
@@ -399,126 +256,95 @@ export default {
       // Command
       match = input.match(this.cmdReg)
       if (match) {
-        const cmd = input.match(/(?<=^:)[a-z]+/g)[0]
-        const value = input.replace(match[0], '')
+        const cmd = match[0]
+        let args = input.match(/(?<=^:[a-z]+\s+).*/)
+        if (args) {
+          args = args[0].match(/\S+/g)
+        }
+        console.log(match)
         console.log(cmd)
-        console.log(value)
-        this.command(cmd, value)
+        console.log(args)
+        this.command(cmd, args)
         return
       }
 
       // Define
       match = input.match(/^\$([A-Z]|[a-z])+\s*=\s*/g)
       if (match) {
-        const lhs = input.match(/^\$([A-Z]|[a-z])+/g)[0]
-        const rhs = '('+ input.replace(match[0], '') + ')'
+        const lhs = input.match(/(?<=^\$)([A-Z]|[a-z])+/g)[0]
+        const rhs = input.replace(match[0], '')
 
         if (!rhs) {
           this.$store.commit('addLine', { text: this.invalidInputMessage } )
           return
         }
 
-        for (let i = 0; i < this.defs.length; i++) {
-          if (this.defs[i].binder === lhs) {
-            this.defs[i].exp = rhs
-            this.$store.commit('addLine', { text: `${lhs} = ${rhs.replace('<', '&lt;').replace('>', '&gt;')}` } )
-            return
-          }
-        }
-
-        this.defs.push( { binder: lhs, exp: rhs } )
+        this.$store.commit('updateVariables', { [lhs]: rhs })
         this.$store.commit('addLine', { text: `${lhs} = ${rhs.replace('<', '&lt;').replace('>', '&gt;')}` } )
-        console.log(this.defs)
-        return
-      }
-
-      // Variable
-      match = input.match(/^\$([A-Z]|[a-z])+$/g)
-      if (match) {
-        if (this.defs.length > 0) {
-          for (let i = 0; i < this.defs.length; i++) {
-            if (this.defs[i].binder === match[0]) {
-              this.$store.commit('addLine', { text: `${match[0]} = ${this.defs[i].exp.replace('<', '&lt;').replace('>', '&gt;')}` } )
-              return
-            }
-          }
-        }
-      }
-
-      // Submit Number
-      if (this.isRunning && input && !isNaN(Number(input))) {
-        this.paramsState.redexNumber.value = input
-        this.submitNum()
+        console.log(this.variables)
         return
       }
 
       this.$store.commit('addLine', { text: this.invalidInputMessage } )
     },
-    command (cmd, value) {
-      if (cmd === 'xi') {
-        if (!value) {
+    command (cmd, args) {
+      if (cmd === 'total') {
+        if (!args) {
           this.$store.commit('addLine', { text: this.argumentEmptyMessage } )
           return
         }
-        this.$store.commit('addLine', { text: 'Ξ: ' + value.replace('<', '&lt;').replace('>', '&gt;') } )
-        this.paramsState.typeContext.value = value
-        return
-      }
-      if (cmd === 'ga') {
-        if (!value) {
-          this.$store.commit('addLine', { text: this.argumentEmptyMessage } )
-          return
-        }
-        this.$store.commit('addLine', { text: 'Γ: ' + value.replace('<', '&lt;').replace('>', '&gt;') } )
-        this.paramsState.termContext.value = value
-        return
-      }
-      if (cmd === 'lambda' || cmd === 'l') {
-        if (!value) {
-          this.$store.commit('addLine', { text: this.argumentEmptyMessage } )
+        if (args.length > 1) {
+          this.$store.commit('addLine', { text: this.invalidArgumentMessage } )
           return
         }
 
-        let newTerm = value
+        const arg = args[0]
 
-        if (this.defs.length > 0) {
-          while (this.isVarExists(newTerm)) {
-            console.log(this.defs)
-            for (let i = 0; i < this.defs.length; i++) {
-              const binder = `\\${this.defs[i].binder}`
-              const regexp = new RegExp(binder,'g')
-              newTerm = newTerm.replace(regexp, this.defs[i].exp)
-              console.log(regexp)
-            }
-          }
-        }
-
-        this.$store.commit('addLine', { text: 'λ-term: ' + newTerm.replace('<', '&lt;').replace('>', '&gt;') } )
-        this.paramsState.initialLambdaTerm.value = newTerm
+        this.$store.commit('addLine', { text: 'Total: ' + arg } )
+        this.params.total.value = arg
         return
       }
-      if (cmd === 'type' || cmd === 't') {
-        this.typingCheck()
-        return
-      }
-      if (cmd === 'run' || cmd === 'r') {
-        if (value === '-untyped' || value === '-u') {
-          this.paramsState.isUntyped.value = true
-        } else {
-          this.paramsState.isUntyped.value = false
+      if (cmd === 'result') {
+        if (!args) {
+          this.$store.commit('addLine', { text: this.argumentEmptyMessage } )
+          return
+        }
+        if (args.length > 1) {
+          this.$store.commit('addLine', { text: this.invalidArgumentMessage } )
+          return
         }
 
-        this.run()
+        const arg = args[0]
+
+        this.$store.commit('addLine', { text: 'Result: ' + arg } )
+        this.params.result.value = arg
+        return
+      }
+      if (cmd === 'calc') {
+        this.calc(args)
         return
       }
       if (cmd === 'show' || cmd === 's') {
-        this.$store.commit('addLines', [{ text: '<br>' }, { text: 'Definitions' }] )
-        if (this.defs.length === 0) {
-          this.$store.commit('addLine', { text: 'None' } )
+        this.$store.commit('addLine', [{ text: '<br>' }, { text: 'Variable(s)' }] )
+
+        if (!args) {
+          if (Object.keys(this.variables).length === 0) {
+            this.$store.commit('addLine', { text: 'None' } )
+          } else {
+            for (let variable in this.variables) {
+              this.$store.commit('addLine', { text: `${variable} = ${this.variables[variable].replace('<', '&lt;').replace('>', '&gt;')}` } )
+            }
+          }
+          return
         }
-        this.defs.forEach(def => {
-          this.$store.commit('addLine', { text: `${def.binder} = ${def.exp.replace('<', '&lt;').replace('>', '&gt;')}` } )
-        })
+
+        for (let arg of args) {
+          for (let variable in this.variables) {
+            if (variable === `$${arg}`) {
+              this.$store.commit('addLine', { text: `${variable} = ${this.variables[variable].replace('<', '&lt;').replace('>', '&gt;')}` } )
+            }
+          }
+        }
         return
       }
       if (cmd === 'clear' || cmd === 'c') {
@@ -532,7 +358,7 @@ export default {
       }
       if (cmd === 'help' || cmd === 'h') {
         const helps = this.helps
-        this.$store.commit('addLines', [{ text: '<br>' }, { text: '<b>Help</b>' }] )
+        this.$store.commit('addLine', [{ text: '<br>' }, { text: '<b>Help</b>' }] )
         for (let i = 0; i < helps.length; i++) {
           this.$store.commit('addLine', { text: `Command: ${helps[i].cmd} ${helps[i].shortCmd ? helps[i].shortCmd : ''}` } )
 
@@ -544,155 +370,97 @@ export default {
             this.$store.commit('addLine', { text: `Option:${option}` } )
           }
           
-          this.$store.commit('addLines', [{ text: `${helps[i].desc}` }, { text: '<br>' }] )
+          this.$store.commit('addLine', [{ text: `${helps[i].desc}` }, { text: '<br>' }] )
         }
         return
       }
+      if (cmd === 't') {
+        let test = "x xs"
+        const regexp = new RegExp(`x`,'g')
+        let matches = test.matchAll(/x/g)
+
+        for (let match of matches) {
+          let before = test.slice(0, match.index)
+          let after  = test.slice(match.index + match.length, test.length)
+          console.log(match)
+          console.log(before + 'y' + after)
+        }
+      }
     },
-    run () {
-      if (this.paramsState.initialLambdaTerm === this.emptyToken) {
-        this.$store.commit('addLine', { text: 'ラムダ式をセットしてください．（:helpでヘルプ）' } )
+    calc (args) {
+      if (!args) {
+        this.$store.commit('addLine', { text: this.argumentEmptyMessage } )
         return
       }
 
-      this.paramsState.lambdaTerm.value = this.paramsState.initialLambdaTerm.value
-
-      this.isRunning = true
-      this.$store.commit('addLines', [
-        { text: '<br>' },
-        { text: '> run LCII' + (this.paramsState.isUntyped.value ? '(Untyped)' : '') },
-        { text: '<br>' }
-      ])
-      this.submitTerm()
-    },
-    submitTerm () {
-      this.paramsState.mode.value = 'init'
-
-      let params = new URLSearchParams()
-
-      for(var param in this.paramsState) {
-        params.append(this.paramsState[param].name, this.paramsState[param].value)
-        console.log(this.paramsState[param].name + ': ' + this.paramsState[param].value)
-      }
-
-      var vm = this
-
-      axios.post(this.baseUrl + this.api, params)
-        .then(function(response){
-          var opt = response.data
-          console.log(opt)
-          if (opt.includes('Parse Error')) {
-            vm.$store.commit('addLine', { text: '無効な入力です．画面右上の「USAGE」からラムダ式または型環境の記法を参照してください．' } )
-            vm.init(true)
-            return
-          }
-
-          var optSplit = vm.replaceInj(opt).split('<br>')
-          
-          vm.pushResults(optSplit)
-
-          if (opt.indexOf('Normal') === -1 && opt.indexOf('Error') === -1) {
-            vm.paramsState.lambdaTerm.value = optSplit[0].replace(vm.delHTML,'')
-            console.log(vm.paramsState.lambdaTerm.value)
-          } else {
-            vm.isRunning = false
-            vm.paramsState.lambdaTerm.value = vm.emptyToken
-            
-            vm.$store.commit('addLines', [{ text: '<br>' }, { text: vm.initialMessage }] )
-          }
-        })
-        .catch(function(err){
-          vm.$store.commit('addLine', { text: vm.connectionErrorMessage } )
-          console.error(err)
-        })
-    },
-    submitNum () {
-      this.paramsState.mode.value = 'red'
-
-      let params = new URLSearchParams()
-
-      for(var param in this.paramsState) {
-        params.append(this.paramsState[param].name, this.paramsState[param].value)
-        console.log(this.paramsState[param].name + ': ' + this.paramsState[param].value)
-      }
-
-      var vm = this
-
-      axios.post(this.baseUrl + this.api, params)
-        .then(function(response){
-          vm.$store.commit('addLines', [{ text: '> ' + vm.paramsState.redexNumber.value }, { text: '<br>' }] )
-          var opt = response.data
-          console.log(opt)
-
-          var optSplit = vm.replaceInj(opt).split('<br>')
-
-          vm.pushResults(optSplit)
-
-          if (opt.indexOf('maximum') !== -1) {
-            vm.$store.commit('addLines', [{ text: '簡約したいRedexの番号を入力してください．' }, { text: '<br>' }] )
-            return
-          }
-          if (opt.indexOf('Normal') === -1 && opt.indexOf('Error') === -1) {
-            if (opt.indexOf('α') !== -1) {
-              vm.paramsState.lambdaTerm.value = optSplit[1].replace(vm.delHTML,'')
-            } else {
-              vm.paramsState.lambdaTerm.value = optSplit[0].replace(vm.delHTML,'')
-            }
-            console.log(vm.paramsState.lambdaTerm.value)
-          } else {
-            vm.isRunning = false
-            vm.paramsState.lambdaTerm.value = vm.emptyToken
-            
-            vm.$store.commit('addLines', [{ text: '<br>' }, { text: vm.initialMessage }] )
-          }
-        })
-        .catch(function(err){
-          vm.$store.commit('addLine', { text: vm.connectionErrorMessage } )
-          console.error(err)
-        })
-    },
-    typingCheck () {
-      if (this.paramsState.initialLambdaTerm === this.emptyToken) {
-        this.$store.commit('addLine', { text: 'ラムダ式をセットしてください．（:helpでヘルプ）' } )
+      if (this.hasInvalidVariable(args.join(''))) {
+        this.$store.commit('addLine', { text: this.invalidArgumentMessage } )
         return
       }
 
-      this.paramsState.mode.value = 'check'
+      console.log(args)
 
-      let params = new URLSearchParams()
+      args = args.map(arg => {
+        return this.substitution(arg)
+      })
+      
+      this.$store.commit('addLine', { text: `Calc: ${args[0]} ${args[1]} ${args[2]}` } )
+      this.params.formula.value = `${args[0]} ${args[1]} ${args[2]}`
+      this.params.mode.value = args[1]
 
-      for(var param in this.paramsState) {
-        params.append(this.paramsState[param].name, this.paramsState[param].value)
-        console.log(this.paramsState[param].name + ': ' + this.paramsState[param].value)
+      console.log(this.params.mode.value)
+      // this.sendReq()
+    },
+    substitution (input) {
+      // while (this.isVarExists(newValue)) {
+      //   console.log(this.defs)
+      //   for (let i = 0; i < this.defs.length; i++) {
+      //     const binder = `\\${this.defs[i].binder}`
+      //     const regexp = new RegExp(binder,'g')
+      //     newValue = newValue.replace(regexp, this.defs[i].exp)
+      //     console.log(regexp)
+      //   }
+      // }
+
+      let matches = input.matchAll(/(?<=\$)([A-Z]|[a-z])+/g)
+      for (const match of matches) {
+        console.log(match)
+      }
+
+
+      for (let variable of this.allVariables(input)) {
+        const regexp = new RegExp(`${variable}`,'g')
+        input = input.replace(regexp, this.variables[variable])
+        console.log(regexp.test(input))
+        console.log(`\$${variable}` + ' = ' + input)
+        console.log(variable + ' -> ' + this.variables[variable])
+      }
+
+      console.log(input)
+      return input
+    },
+    sendReq () {
+      let request = new URLSearchParams()
+
+      for(var param in this.params) {
+        request.append(this.params[param].name, this.params[param].value)
+        console.log(this.params[param].name + ': ' + this.params[param].value)
       }
 
       var vm = this
 
-      axios.post(this.baseUrl + this.api, params)
+      axios.post(this.baseUrl + this.api, request)
         .then(function(response){
           var opt = response.data
+          console.log(opt)
 
-          if (opt === '') {
-            vm.$store.commit('addLine', { text: 'ラムダ式が型無しです．' } )
-          } else {
-            vm.$store.commit('addLine', { text: opt } )
-          }
+          vm.pushResults(optSplit)
+          vm.$store.commit('addLine', [{ text: '<br>' }, { text: vm.initialMessage }] )
         })
         .catch(function(err){
           vm.$store.commit('addLine', { text: vm.connectionErrorMessage } )
           console.error(err)
         })
-    },
-    replaceInj (opt) {
-      // Injectとマッチした部分は<>がHTMLタグと混同されるのでコードに置き換える
-      var match = opt.match(this.popInj)
-      var text = opt
-      if (match) {
-        match.forEach(x => {
-          text = text.replace(x, '&lt;' + x.substring(1, x.length - 1) + '&gt;')
-        })
-      }
-      return text
     },
     pushResults (optSplit) {
       var addOutputs = []
@@ -709,54 +477,71 @@ export default {
         }
       }
 
-      this.$store.commit('addLines', addOutputs )
-    },
-    addExampleTypedTerm (example) {
-      this.paramsState.isUntyped.value = false
-      this.paramsState.initialLambdaTerm.value = example.term
-      this.paramsState.lambdaTerm.value = example.term
-      this.paramsState.typeContext.value = example.envType
-      this.paramsState.termContext.value = example.envTerm
-      this.examplesDrawer = false
-    },
-    addExampleUntypedTerm (example) {
-      this.paramsState.isUntyped.value = true
-      this.paramsState.initialLambdaTerm.value = example.term
-      this.paramsState.lambdaTerm.value = example.term
-      this.paramsState.typeContext.value = this.emptyToken
-      this.paramsState.termContext.value = this.emptyToken
-      this.examplesDrawer = false
+      this.$store.commit('addLine', addOutputs )
     },
     isVarExists (input) {
-      if (this.defs.length === 0) return false
-      for (let i = 0; i < this.defs.length; i++) {
-        const binder = `\\${this.defs[i].binder}`
-        const regexp = new RegExp(binder,'g')
-        if (regexp.test(input)) return true
+      return this.allVariables(input).length > 0
+    },
+    hasInvalidVariable (input) {
+      if (!this.allVariables(input)) return false
+      for (let variable of this.allVariables(input)) {
+        if (!this.variables.hasOwnProperty(variable)) {
+          return true
+        }
       }
       return false
     },
-    init (isNewLine) {
-      this.isRunning = false
+    allVariables (input) {
+      // let allVariables = {}
 
-      this.paramsState.initialLambdaTerm.value = this.emptyToken
-      this.paramsState.lambdaTerm.value = this.emptyToken
-      this.paramsState.typeContext.value = this.emptyToken
-      this.paramsState.termContext.value = this.emptyToken
-      
+      // for (let variable in this.variables) {
+      //   const regexp = new RegExp(`${variable}\s+`,'g')
+      //   if (regexp.test(input)) {
+      //     allVariables[variable] = this.variables[variable]
+      //   }
+      // }
+
+      let match = input.match(/(?<=\$)([A-Z]|[a-z])+/g)
+      if (!match) {
+        return []
+      }
+      return match
+    },
+    updateParams (args) {
+      for(var arg in args) {
+        this.$set(this.params[arg], 'value', args[arg])
+      }
+      this.$forceUpdate()
+    },
+    init (isNewLine) {
+      let state = this.params
+
+      for(var param in state) {
+        state[param].value = state[param].default
+      }
+
       if (isNewLine) {
-        this.$store.commit('addLines', [{ text: '<br>' }, { text: this.initialMessage }] )
+        this.$store.commit('addLine', [{ text: '<br>' }, { text: this.initialMessage }] )
       } else {
         this.$store.commit('addLine', { text: this.initialMessage } )
       }
+      console.log(this.params)
+    },
+    openDrawer (feature) {
+      this.closeDrawer()
+      feature.drawer = true
     },
     closeDrawer () {
-      this.historyDrawer = false
-      this.examplesDrawer = false
-      this.defsDrawer = false
+      let features = this.features
+
+      for(var feature in features) {
+        if (feature.hasOwnProperty('drawer')) {
+          features[feature].drawer = false
+        }
+      }
     },
     clear () {
-      this.history.push( ...this.console, { text: '---------------- Clear ----------------' } )
+      this.$store.commit('addHistory', [...this.console, { text: '---------------- Clear ----------------' }])
       this.$store.commit('initConsole')
       this.init()
     },
@@ -765,9 +550,9 @@ export default {
     }
   },
   created () {
-    for(var param in this.params) {
-      this.paramsState[param] = this.params[param]
-      this.paramsState[param].value = this.params[param].default
+    for(var param in this.paramsSettings) {
+      this.params[param] = this.paramsSettings[param]
+      this.params[param].value = this.paramsSettings[param].default
     }
     this.init()
   },
