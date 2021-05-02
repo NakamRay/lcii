@@ -6,11 +6,10 @@
     app
     right
     width="500"
-    class="customDark"
   >
     <v-list class="py-0">
       <v-subheader style="height: 49px;">
-        <h1>HISTORY</h1>
+        <h1>VARIABLES</h1>
         <v-spacer></v-spacer>
         <v-btn icon @click.stop="closeDrawers()">
           <v-icon>mdi-close</v-icon>
@@ -18,12 +17,21 @@
       </v-subheader>
       <v-divider></v-divider>
       <v-list-item
-        style="min-height: 25px;"
-        v-for="(ahistory,index) in history" :key="index"
+        v-for="(variable, key) in variables" :key="key"
+        style="height: 50px;"
+        class="px-3"
       >
         <v-list-item-title>
-          <span class="drawer-text" v-html="ahistory.text"></span>
+          {{ key }} = {{ variables[key] }}
         </v-list-item-title>
+
+        <v-spacer></v-spacer>
+
+        <v-list-item-action>
+          <v-btn icon @click="$store.commit('deleteVariables', key); $forceUpdate();">
+            <v-icon>mdi-delete</v-icon>
+          </v-btn>
+        </v-list-item-action>
       </v-list-item>
     </v-list>
   </v-navigation-drawer>
@@ -34,10 +42,10 @@ import { mapState, mapMutations } from 'vuex'
 
 export default {
   data: () => ({
-    key: 'history'
+    key: 'variables'
   }),
   computed: {
-    ...mapState(['history']),
+    ...mapState(['variables']),
     drawer: {
       get () {
         return this.$store.state.features[this.key].drawer
@@ -51,6 +59,6 @@ export default {
       }
     }
   },
-  methods: mapMutations(['openDrawer', 'closeDrawers'])
+  methods: mapMutations(['openDrawer', 'closeDrawers', 'deleteVariables'])
 }
 </script>

@@ -1,6 +1,6 @@
 <template>
   <v-navigation-drawer
-      v-model="features.examples.drawer"
+      v-model="drawer"
       disable-resize-watcher
       temporary
       app
@@ -11,7 +11,7 @@
       <v-subheader style="height: 49px;">
         <h1>EXAMPLES</h1>
         <v-spacer></v-spacer>
-        <v-btn icon @click.stop="features.examples.drawer = false">
+        <v-btn icon @click.stop="closeDrawers()">
           <v-icon>mdi-close</v-icon>
         </v-btn>
       </v-subheader>
@@ -23,7 +23,7 @@
             style="min-height: 15px;"
             v-for="(anexample,index) in example" :key="index"
             v-ripple="{ class: 'red--text' }"
-            @click.stop="$emit('update-params', { formula: anexample.formula }); features.examples.drawer = false;"
+            @click.stop="$emit('update-params', { formula: anexample.formula }); closeDrawers()"
           >
             <v-list-item-title>
               <v-alert
@@ -45,13 +45,29 @@
 </template>
 
 <script>
-import { features } from '~/assets/features.js'
+import { mapState, mapMutations } from 'vuex'
+
 import { examples } from '~/assets/examples.js'
 
 export default {
   data: () => ({
-    features,
+    key: 'examples',
     examples
-  })
+  }),
+  computed: {
+    drawer: {
+      get () {
+        return this.$store.state.features[this.key].drawer
+      },
+      set (value) {
+        if (value) {
+          this.openDrawer(this.key)
+        } else {
+          this.closeDrawers()
+        }
+      }
+    }
+  },
+  methods: mapMutations(['openDrawer', 'closeDrawers'])
 }
 </script>

@@ -2,43 +2,7 @@
   <v-container fluid>
     <HistoryDrawer/>
     <ExamplesDrawer @update-params="updateParams"/>
-
-    <v-navigation-drawer
-      v-model="features.definitions.drawer"
-      disable-resize-watcher
-      temporary
-      app
-      right
-      width="500"
-    >
-      <v-list class="py-0">
-        <v-subheader style="height: 49px;">
-          <h1>DEFINITIONS</h1>
-          <v-spacer></v-spacer>
-          <v-btn icon @click.stop="features.definitions.drawer = false">
-            <v-icon>mdi-close</v-icon>
-          </v-btn>
-        </v-subheader>
-        <v-divider></v-divider>
-        <v-list-item
-          v-for="(def, i) in defs" :key="i"
-          style="height: 50px;"
-          class="px-3"
-        >
-          <v-list-item-title>
-            {{ def.binder }} = {{ def.exp }}
-          </v-list-item-title>
-
-          <v-spacer></v-spacer>
-
-          <v-list-item-action>
-            <v-btn icon @click="defs.splice(i, 1)">
-              <v-icon>mdi-delete</v-icon>
-            </v-btn>
-          </v-list-item-action>
-        </v-list-item>
-      </v-list>
-    </v-navigation-drawer>
+    <VariablesDrawer/>
 
     <v-main>
       <v-container
@@ -115,7 +79,7 @@
                 class="px-0"
                 style="flex-grow: unset;"
               >
-                <v-btn icon @click="key === 'clear' ? clear() : feature.hasOwnProperty('drawer') ? openDrawer(feature) : run()">
+                <v-btn icon @click="drawerEvent(key)">
                   <v-icon v-text="feature.icon"></v-icon>
                 </v-btn>
               </v-col>
@@ -123,38 +87,8 @@
           </v-col>
         </v-row>
 
-        <!-- Float Button -->
-        <v-speed-dial
-          class="d-flex d-sm-none"
-          v-model="fab"
-          bottom
-          right
-          absolute
-          direction="top"
-          transition="slide-y-reverse-transition"
-        >
-          <template v-slot:activator>
-            <v-btn
-              v-model="fab"
-              fab
-              dark
-              color="blue darken-2"
-            >
-              <v-icon v-if="fab">mdi-close</v-icon>
-              <v-icon v-else>mdi-menu</v-icon>
-            </v-btn>
-          </template>
-          <v-btn
-            v-for="(feature, key) in features" :key="key"
-            fab
-            dark
-            small
-            color="purple"
-            @click="key === 'clear' ? clear() : feature.hasOwnProperty('drawer') ? openDrawer(feature) : run()"
-          >
-            <v-icon v-text="feature.icon"></v-icon>
-          </v-btn>
-        </v-speed-dial>
+        <!-- Floating Action Button -->
+        <Fab @drawer-event="drawerEvent"/>
       </v-container>
     </v-main>
   </v-container>
@@ -165,19 +99,22 @@ import axios from 'axios'
 import { mapState, mapMutations, mapActions, mapGetters } from 'vuex'
 
 import { paramsSettings } from '~/assets/configs.js'
-import { features } from '~/assets/features.js'
 import { helps } from '~/assets/helps.js'
 import { examples } from '~/assets/examples.js'
 
 import HistoryDrawer from '~/components/drawers/HistoryDrawer.vue'
 import ExamplesDrawer from '~/components/drawers/ExamplesDrawer.vue'
+import VariablesDrawer from '~/components/drawers/VariablesDrawer.vue'
+import Fab from '~/components/Fab.vue'
 
 export default {
   components: {
     HistoryDrawer,
     ExamplesDrawer,
+    VariablesDrawer,
+    Fab
   },
-  data(){return{
+  data: () => ({
     // for axios
     paramsSettings,
     params: {},
@@ -204,9 +141,6 @@ export default {
     envHeight: 0,
     consoleHeight: 0,
 
-    // for features
-    features,
-
     // for float button
     fab: false,
 
@@ -216,20 +150,13 @@ export default {
     emptyToken: 'Empty',
     isRunning: false,
     input: '',
-    defs: [],
-  }},
+  }),
   computed: {
-    ...mapMutations([
-      'initConsole',
-      'addLine',
-      'addHistory',
-      'updateVariables'
-    ]),
-    ...mapGetters([
+    ...mapState([
       'console',
+      'features',
       'history',
       'variables',
-      'getState'
     ]),
   },
   watch: {
@@ -244,6 +171,15 @@ export default {
     }
   },
   methods: {
+    ...mapMutations([
+      'initConsole',
+      'addLine',
+      'addHistory',
+      'updateVariables',
+      'deleteVariables',
+      'openDrawer',
+      'closeDrawers',
+    ]),
     enter () {
       const input = this.input
 
@@ -268,55 +204,55 @@ export default {
         return
       }
 
-      // Define
+      // Define a variable
       match = input.match(/^\$([A-Z]|[a-z])+\s*=\s*/g)
       if (match) {
-        const lhs = input.match(/(?<=^\$)([A-Z]|[a-z])+/g)[0]
+        const lhs = input.match(/^\$([A-Z]|[a-z])+/g)[0]
         const rhs = input.replace(match[0], '')
 
         if (!rhs) {
-          this.$store.commit('addLine', { text: this.invalidInputMessage } )
+          this.addLine({ text: this.invalidInputMessage } )
           return
         }
 
         this.$store.commit('updateVariables', { [lhs]: rhs })
-        this.$store.commit('addLine', { text: `${lhs} = ${rhs.replace('<', '&lt;').replace('>', '&gt;')}` } )
+        this.addLine({ text: `${lhs} = ${rhs.replace('<', '&lt;').replace('>', '&gt;')}` } )
         console.log(this.variables)
         return
       }
 
-      this.$store.commit('addLine', { text: this.invalidInputMessage } )
+      this.addLine({ text: this.invalidInputMessage } )
     },
     command (cmd, args) {
       if (cmd === 'total') {
         if (!args) {
-          this.$store.commit('addLine', { text: this.argumentEmptyMessage } )
+          this.addLine({ text: this.argumentEmptyMessage } )
           return
         }
         if (args.length > 1) {
-          this.$store.commit('addLine', { text: this.invalidArgumentMessage } )
+          this.addLine({ text: this.invalidArgumentMessage } )
           return
         }
 
         const arg = args[0]
 
-        this.$store.commit('addLine', { text: 'Total: ' + arg } )
+        this.addLine({ text: 'Total: ' + arg } )
         this.params.total.value = arg
         return
       }
       if (cmd === 'result') {
         if (!args) {
-          this.$store.commit('addLine', { text: this.argumentEmptyMessage } )
+          this.addLine({ text: this.argumentEmptyMessage } )
           return
         }
         if (args.length > 1) {
-          this.$store.commit('addLine', { text: this.invalidArgumentMessage } )
+          this.addLine({ text: this.invalidArgumentMessage } )
           return
         }
 
         const arg = args[0]
 
-        this.$store.commit('addLine', { text: 'Result: ' + arg } )
+        this.addLine({ text: 'Result: ' + arg } )
         this.params.result.value = arg
         return
       }
@@ -325,14 +261,14 @@ export default {
         return
       }
       if (cmd === 'show' || cmd === 's') {
-        this.$store.commit('addLine', [{ text: '<br>' }, { text: 'Variable(s)' }] )
+        this.addLine([{ text: '<br>' }, { text: 'Variable(s)' }] )
 
         if (!args) {
           if (Object.keys(this.variables).length === 0) {
-            this.$store.commit('addLine', { text: 'None' } )
+            this.addLine({ text: 'None' } )
           } else {
             for (let variable in this.variables) {
-              this.$store.commit('addLine', { text: `${variable} = ${this.variables[variable].replace('<', '&lt;').replace('>', '&gt;')}` } )
+              this.addLine({ text: `${variable} = ${this.variables[variable].replace('<', '&lt;').replace('>', '&gt;')}` } )
             }
           }
           return
@@ -340,8 +276,8 @@ export default {
 
         for (let arg of args) {
           for (let variable in this.variables) {
-            if (variable === `$${arg}`) {
-              this.$store.commit('addLine', { text: `${variable} = ${this.variables[variable].replace('<', '&lt;').replace('>', '&gt;')}` } )
+            if (variable === `${arg}` || variable === `$${arg}`) {
+              this.addLine({ text: `${variable} = ${this.variables[variable].replace('<', '&lt;').replace('>', '&gt;')}` } )
             }
           }
         }
@@ -352,25 +288,25 @@ export default {
         return
       }
       if (cmd === 'quit' || cmd === 'q') {
-        this.$store.commit('addLine', { text: '> quit' } )
+        this.addLine({ text: '> quit' } )
         this.init(true)
         return
       }
       if (cmd === 'help' || cmd === 'h') {
         const helps = this.helps
-        this.$store.commit('addLine', [{ text: '<br>' }, { text: '<b>Help</b>' }] )
+        this.addLine([{ text: '<br>' }, { text: '<b>Help</b>' }] )
         for (let i = 0; i < helps.length; i++) {
-          this.$store.commit('addLine', { text: `Command: ${helps[i].cmd} ${helps[i].shortCmd ? helps[i].shortCmd : ''}` } )
+          this.addLine({ text: `Command: ${helps[i].cmd} ${helps[i].shortCmd ? helps[i].shortCmd : ''}` } )
 
           if (helps[i].options.length > 0) {
             let option = ''
             for(let j = 0; j < helps[i].options.length; j++) {
               option += ` ${helps[i].options[j]}`
             }
-            this.$store.commit('addLine', { text: `Option:${option}` } )
+            this.addLine({ text: `Option:${option}` } )
           }
           
-          this.$store.commit('addLine', [{ text: `${helps[i].desc}` }, { text: '<br>' }] )
+          this.addLine([{ text: `${helps[i].desc}` }, { text: '<br>' }] )
         }
         return
       }
@@ -389,12 +325,12 @@ export default {
     },
     calc (args) {
       if (!args) {
-        this.$store.commit('addLine', { text: this.argumentEmptyMessage } )
+        this.addLine({ text: this.argumentEmptyMessage } )
         return
       }
 
       if (this.hasInvalidVariable(args.join(''))) {
-        this.$store.commit('addLine', { text: this.invalidArgumentMessage } )
+        this.addLine({ text: this.invalidArgumentMessage } )
         return
       }
 
@@ -404,7 +340,7 @@ export default {
         return this.substitution(arg)
       })
       
-      this.$store.commit('addLine', { text: `Calc: ${args[0]} ${args[1]} ${args[2]}` } )
+      this.addLine({ text: `Calc: ${args[0]} ${args[1]} ${args[2]}` } )
       this.params.formula.value = `${args[0]} ${args[1]} ${args[2]}`
       this.params.mode.value = args[1]
 
@@ -412,31 +348,13 @@ export default {
       // this.sendReq()
     },
     substitution (input) {
-      // while (this.isVarExists(newValue)) {
-      //   console.log(this.defs)
-      //   for (let i = 0; i < this.defs.length; i++) {
-      //     const binder = `\\${this.defs[i].binder}`
-      //     const regexp = new RegExp(binder,'g')
-      //     newValue = newValue.replace(regexp, this.defs[i].exp)
-      //     console.log(regexp)
-      //   }
-      // }
-
-      let matches = input.matchAll(/(?<=\$)([A-Z]|[a-z])+/g)
-      for (const match of matches) {
-        console.log(match)
-      }
-
-
       for (let variable of this.allVariables(input)) {
-        const regexp = new RegExp(`${variable}`,'g')
+        const test = `\\${variable}`
+        const regexp = new RegExp(test)
         input = input.replace(regexp, this.variables[variable])
-        console.log(regexp.test(input))
-        console.log(`\$${variable}` + ' = ' + input)
         console.log(variable + ' -> ' + this.variables[variable])
       }
 
-      console.log(input)
       return input
     },
     sendReq () {
@@ -455,10 +373,10 @@ export default {
           console.log(opt)
 
           vm.pushResults(optSplit)
-          vm.$store.commit('addLine', [{ text: '<br>' }, { text: vm.initialMessage }] )
+          vm.addLine([{ text: '<br>' }, { text: vm.initialMessage }] )
         })
         .catch(function(err){
-          vm.$store.commit('addLine', { text: vm.connectionErrorMessage } )
+          vm.addLine({ text: vm.connectionErrorMessage } )
           console.error(err)
         })
     },
@@ -477,7 +395,7 @@ export default {
         }
       }
 
-      this.$store.commit('addLine', addOutputs )
+      this.addLine(addOutputs )
     },
     isVarExists (input) {
       return this.allVariables(input).length > 0
@@ -501,7 +419,7 @@ export default {
       //   }
       // }
 
-      let match = input.match(/(?<=\$)([A-Z]|[a-z])+/g)
+      let match = input.match(/\$([A-Z]|[a-z])+/g)
       if (!match) {
         return []
       }
@@ -513,6 +431,15 @@ export default {
       }
       this.$forceUpdate()
     },
+    drawerEvent (key) {
+      if (key === 'clear') {
+        this.clear()
+      } else if (this.features[key].hasOwnProperty('drawer')) {
+        this.openDrawer(key)
+      } else {
+        this.calc()
+      }
+    },
     init (isNewLine) {
       let state = this.params
 
@@ -521,28 +448,15 @@ export default {
       }
 
       if (isNewLine) {
-        this.$store.commit('addLine', [{ text: '<br>' }, { text: this.initialMessage }] )
+        this.addLine([{ text: '<br>' }, { text: this.initialMessage }] )
       } else {
-        this.$store.commit('addLine', { text: this.initialMessage } )
+        this.addLine({ text: this.initialMessage } )
       }
       console.log(this.params)
     },
-    openDrawer (feature) {
-      this.closeDrawer()
-      feature.drawer = true
-    },
-    closeDrawer () {
-      let features = this.features
-
-      for(var feature in features) {
-        if (feature.hasOwnProperty('drawer')) {
-          features[feature].drawer = false
-        }
-      }
-    },
     clear () {
-      this.$store.commit('addHistory', [...this.console, { text: '---------------- Clear ----------------' }])
-      this.$store.commit('initConsole')
+      this.addHistory([...this.console, { text: '---------------- Clear ----------------' }])
+      this.initConsole()
       this.init()
     },
     updateConsoleHeight () {

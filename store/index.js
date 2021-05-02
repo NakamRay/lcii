@@ -1,9 +1,10 @@
-import { paramsSettings } from '~/assets/configs.js'
+import { features } from '~/assets/features.js'
 
 export const state = () => ({
   console: [],
+  features: features,
   history: [],
-  variables: {},
+  variables: { $x: "123", $xs: "456" },
 })
 
 export const mutations = {
@@ -16,7 +17,7 @@ export const mutations = {
     state.console.push(...line)
   },
 
-  //for history
+  // for history
   initHistory(state) {
     state.history = []
   },
@@ -25,7 +26,7 @@ export const mutations = {
     state.history.push(...history)
   },
 
-  //for variables
+  // for variables
   initVariables(state) {
     state.variables = {}
   },
@@ -33,7 +34,27 @@ export const mutations = {
     for (var variable in variables) {
       state.variables[variable] = variables[variable]
     }
-  }
+  },
+  deleteVariables(state, variables) {
+    variables = [variables].flat()
+    console.log(variables)
+    for (var variable of variables) {
+      delete state.variables[variable]
+      console.log(state.variables)
+    }
+  },
+
+  // for drawers
+  openDrawer(state, feature) {
+    state.features[feature].drawer = true
+  },
+  closeDrawers(state) {
+    for (var feature in state.features) {
+      if (state.features[feature].hasOwnProperty('drawer')) {
+        state.features[feature].drawer = false
+      }
+    }
+  },
 }
 
 export const getters = {

@@ -10,7 +10,7 @@ export const features = {
     icon: 'mdi-lambda',
     drawer: false
   },
-  definitions: {
+  variables: {
     icon: 'mdi-order-alphabetical-ascending',
     drawer: false
   },
