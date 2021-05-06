@@ -1,0 +1,19 @@
+.drawer-text {
+  font-size: 13px;
+}
+.theme--dark.v-divider {
+  border-color: #424242 !important;
+}
+.theme--dark.v-text-field--solo > .v-input__control > .v-input__slot {
+  background-color: #1e1e1e !important;
+}
+.customDark {
+  background-color: #1e1e1e !important;
+  border: medium solid #424242;
+}
+p.text--primary {
+  margin-bottom: 3px !important;
+}
+.theme--dark.v-alert {
+    background-color: #303030 !important;
+}

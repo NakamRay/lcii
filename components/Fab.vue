@@ -25,7 +25,7 @@
       dark
       small
       color="purple"
-      @click="$emit('drawer-event', key);"
+      @click="$emit('drawer-event', key)"
     >
       <v-icon v-text="feature.icon"></v-icon>
     </v-btn>
@@ -33,15 +33,12 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex'
+import { mapState } from 'vuex'
 
 export default {
   data: () => ({
     fab: false
   }),
-  computed: {
-    ...mapState(['features']),
-  },
-  methods: mapMutations(['openDrawer', 'closeDrawers'])
+  computed: mapState(['features'])
 }
 </script>

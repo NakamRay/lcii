@@ -1,4 +1,5 @@
 import { features } from '~/assets/features.js'
+import { helps } from '~/assets/helps.js'
 
 export const state = () => ({
   console: [],
@@ -54,20 +55,79 @@ export const mutations = {
         state.features[feature].drawer = false
       }
     }
+  }
+}
+
+export const actions = {
+  showVariables({ state, commit }, args) {
+    let addLine = payload => commit('addLine', payload)
+
+    addLine([{ text: '<br>' }, { text: 'Variable(s)' }])
+
+    if (!args) {
+      if (Object.keys(state.variables).length === 0) {
+        addLine({ text: 'None' })
+      } else {
+        for (let variable in state.variables) {
+          addLine({ text: `${variable} = ${state.variables[variable].replace('<', '&lt;').replace('>', '&gt;')}` })
+        }
+      }
+      return
+    }
+
+    for (let arg of args) {
+      for (let variable in state.variables) {
+        if (variable === `${arg}` || variable === `$${arg}`) {
+          addLine({ text: `${variable} = ${state.variables[variable].replace('<', '&lt;').replace('>', '&gt;')}` })
+        }
+      }
+    }
+  },
+  showHelps() {
+    let addLine = payload => this.commit('addLine', payload)
+
+    addLine([{ text: '<br>' }, { text: '<b>Help</b>' }])
+    for (let i = 0; i < helps.length; i++) {
+      addLine({ text: `Command: ${helps[i].cmd} ${helps[i].shortCmd ? helps[i].shortCmd : ''}` })
+
+      if (helps[i].options.length > 0) {
+        let option = ''
+        for (let j = 0; j < helps[i].options.length; j++) {
+          option += ` ${helps[i].options[j]}`
+        }
+        addLine({ text: `Option:${option}` })
+      }
+
+      addLine([{ text: `${helps[i].desc}` }, { text: '<br>' }])
+    }
   },
 }
 
 export const getters = {
-  console(state) {
-    return state.console
+  allVariables: (state) => (input) => {
+    // allVariables("$x$y$z") returns ["$x", "$y", "$z"]
+
+    let match = input.match(/\$([A-Z]|[a-z])+/g)
+    if (!match) {
+      return []
+    }
+    return match
   },
-  history(state) {
-    return state.history
+  isVarExists: (state, getters) => (input) => {
+    // isVarExists("$x") returns true
+    // isVarExists("x") returns false
+
+    return getters.allVariables(input).length > 0
   },
-  variables(state) {
-    return state.variables
-  },
-  getState: (state) => (stateID) => {
-    return state[stateID]
+  hasInvalidVariable: (state, getters) => (input) => {
+    // hasInvalidVariable("$x") returns true if "$x" in state.variables
+
+    if (!getters.allVariables(input)) return false
+    for (let variable of getters.allVariables(input)) {
+      if (!state.variables.hasOwnProperty(variable)) {
+        return true
+      }
+    }
+    return false
   },
 }
