@@ -1,7 +1,9 @@
 import { features } from '~/assets/features.js'
+import { params, messages } from '~/assets/configs.js'
 import { helps } from '~/assets/helps.js'
 
 export const state = () => ({
+  params: params,
   console: [],
   features: features,
   history: [],
@@ -9,6 +11,19 @@ export const state = () => ({
 })
 
 export const mutations = {
+  // for Params
+  init(state) {
+    for (var param in state.params) {
+      state.params[param].value = state.params[param].default
+    }
+  },
+  updateParamValue(state, payload) {
+    const key = payload.key
+    const value = payload.value
+
+    state.params[key].value = value
+  },
+
   // for console
   initConsole(state) {
     state.console = []
@@ -59,6 +74,16 @@ export const mutations = {
 }
 
 export const actions = {
+  clear({ state, commit }) {
+    commit('addHistory', [
+      ...state.console,
+      { text: "---------------- Clear ----------------" },
+    ])
+    commit('initConsole')
+    commit('init')
+    commit('addLine', { text: messages.initialMessage })
+  },
+
   showVariables({ state, commit }, args) {
     let addLine = payload => commit('addLine', payload)
 
@@ -83,6 +108,7 @@ export const actions = {
       }
     }
   },
+
   showHelps() {
     let addLine = payload => this.commit('addLine', payload)
 
@@ -104,6 +130,13 @@ export const actions = {
 }
 
 export const getters = {
+  replaceSpecialCharacter: (state) => (input) => {
+    // allVariables("<input>") returns "&lt;input&gt;"
+
+    return input.replace("<", "&lt;").replace(">", "&gt;")
+  },
+
+  // for Variables
   allVariables: (state) => (input) => {
     // allVariables("$x$y$z") returns ["$x", "$y", "$z"]
 
@@ -113,14 +146,14 @@ export const getters = {
     }
     return match
   },
-  isVarExists: (state, getters) => (input) => {
-    // isVarExists("$x") returns true
-    // isVarExists("x") returns false
+  hasVariable: (state, getters) => (input) => {
+    // hasVariable("$x") returns true
+    // hasVariable("x") returns false
 
     return getters.allVariables(input).length > 0
   },
   hasInvalidVariable: (state, getters) => (input) => {
-    // hasInvalidVariable("$x") returns true if "$x" in state.variables
+    // hasInvalidVariable("$x") returns true if "$x" is in state.variables
 
     if (!getters.allVariables(input)) return false
     for (let variable of getters.allVariables(input)) {
@@ -129,5 +162,15 @@ export const getters = {
       }
     }
     return false
+  },
+  substitution: (state, getters) => (input) => {
+    for (let variable of getters.allVariables(input)) {
+      const test = `\\${variable}`;
+      const regexp = new RegExp(test);
+      input = input.replace(regexp, state.variables[variable]);
+      console.log(variable + " -> " + state.variables[variable]);
+    }
+
+    return input;
   },
 }

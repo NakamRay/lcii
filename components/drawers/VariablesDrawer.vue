@@ -8,7 +8,7 @@
     width="500"
   >
     <v-list class="py-0">
-      <v-subheader style="height: 49px;">
+      <v-subheader style="height: 49px">
         <h1>VARIABLES</h1>
         <v-spacer></v-spacer>
         <v-btn icon @click.stop="closeDrawers()">
@@ -17,8 +17,9 @@
       </v-subheader>
       <v-divider></v-divider>
       <v-list-item
-        v-for="(variable, key) in variables" :key="key"
-        style="height: 50px;"
+        v-for="(variable, key) in variables"
+        :key="key"
+        style="height: 50px"
         class="px-3"
       >
         <v-list-item-title>
@@ -28,7 +29,13 @@
         <v-spacer></v-spacer>
 
         <v-list-item-action>
-          <v-btn icon @click="$store.commit('deleteVariables', key); $forceUpdate();">
+          <v-btn
+            icon
+            @click="
+              $store.commit('deleteVariables', key);
+              $forceUpdate();
+            "
+          >
             <v-icon>mdi-delete</v-icon>
           </v-btn>
         </v-list-item-action>
@@ -38,27 +45,27 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex'
+import { mapState, mapMutations } from "vuex";
 
 export default {
   data: () => ({
-    key: 'variables'
+    key: "variables",
   }),
   computed: {
-    ...mapState(['variables']),
+    ...mapState(["variables"]),
     drawer: {
-      get () {
-        return this.$store.state.features[this.key].drawer
+      get() {
+        return this.$store.state.features[this.key].drawer;
       },
-      set (value) {
+      set(value) {
         if (value) {
-          this.openDrawer(this.key)
+          this.openDrawer(this.key);
         } else {
-          this.closeDrawers()
+          this.closeDrawers();
         }
-      }
-    }
+      },
+    },
   },
-  methods: mapMutations(['openDrawer', 'closeDrawers', 'deleteVariables'])
-}
+  methods: mapMutations(["openDrawer", "closeDrawers", "deleteVariables"]),
+};
 </script>

@@ -9,7 +9,7 @@
     class="customDark"
   >
     <v-list class="py-0">
-      <v-subheader style="height: 49px;">
+      <v-subheader style="height: 49px">
         <h1>HISTORY</h1>
         <v-spacer></v-spacer>
         <v-btn icon @click.stop="closeDrawers()">
@@ -18,8 +18,9 @@
       </v-subheader>
       <v-divider></v-divider>
       <v-list-item
-        style="min-height: 25px;"
-        v-for="(ahistory,index) in history" :key="index"
+        style="min-height: 25px"
+        v-for="(ahistory, index) in history"
+        :key="index"
       >
         <v-list-item-title>
           <span class="drawer-text" v-html="ahistory.text"></span>
@@ -30,27 +31,27 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex'
+import { mapState, mapMutations } from "vuex";
 
 export default {
   data: () => ({
-    key: 'history'
+    key: "history",
   }),
   computed: {
-    ...mapState(['history']),
+    ...mapState(["history"]),
     drawer: {
-      get () {
-        return this.$store.state.features[this.key].drawer
+      get() {
+        return this.$store.state.features[this.key].drawer;
       },
-      set (value) {
+      set(value) {
         if (value) {
-          this.openDrawer(this.key)
+          this.openDrawer(this.key);
         } else {
-          this.closeDrawers()
+          this.closeDrawers();
         }
-      }
-    }
+      },
+    },
   },
-  methods: mapMutations(['openDrawer', 'closeDrawers'])
-}
+  methods: mapMutations(["openDrawer", "closeDrawers"]),
+};
 </script>
