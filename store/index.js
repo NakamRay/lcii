@@ -4,9 +4,31 @@ import { params, messages } from '~/assets/configs.js'
 export const state = () => ({
   params: params,
   console: [],
+  usageDialog: false,
   features: features,
   history: [],
-  variables: { $x: "123", $xs: "456" },
+  variables: {
+    $x: "123",
+    $xs: "456",
+    $xs1: "456",
+    $xs2: "456",
+    $xs3: "456",
+    $xs4: "456",
+    $xs5: "456",
+    $xs6: "456",
+    $xs7: "456",
+    $xs8: "456",
+    $xs9: "456",
+    $xs10: "456",
+    $xs11: "456",
+    $xs12: "456",
+    $xs13: "456",
+    $xs14: "456",
+    $xs15: "456",
+    $xs16: "456",
+    $xs17: "456",
+    $xs18: "456",
+  },
 })
 
 export const mutations = {
@@ -37,8 +59,7 @@ export const mutations = {
     state.history = []
   },
   addHistory(state, history) {
-    history = [history].flat()
-    state.history.push(...history)
+    state.history.push(history)
   },
 
   // for variables
@@ -47,19 +68,20 @@ export const mutations = {
   },
   updateVariables(state, variables) {
     for (var variable in variables) {
-      state.variables[variable] = variables[variable]
+      state.variables["$" + variable] = variables[variable]
     }
   },
   deleteVariables(state, variables) {
     variables = [variables].flat()
-    console.log(variables)
     for (var variable of variables) {
       delete state.variables[variable]
-      console.log(state.variables)
     }
   },
 
-  // for drawers
+  // for dialogs and drawers
+  switchUsageDialog(state) {
+    state.usageDialog = !state.usageDialog
+  },
   openDrawer(state, feature) {
     state.features[feature].drawer = true
   },
@@ -74,10 +96,7 @@ export const mutations = {
 
 export const actions = {
   clear({ state, commit }) {
-    commit('addHistory', [
-      ...state.console,
-      { text: "---------------- Clear ----------------" },
-    ])
+    commit('addHistory', state.console)
     commit('initConsole')
     commit('init')
     commit('addLine', { text: messages.initialMessage })

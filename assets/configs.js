@@ -6,9 +6,6 @@ export const app = {
 
 export const messages = {
   initialMessage: "使用方法は画面右上のUsageを参照してください．",
-  invalidInputMessage: "無効な入力です．",
-  argumentEmptyMessage: "引数を指定してください．（:helpでヘルプ）",
-  invalidArgumentMessage: "引数が不正です．（:helpでヘルプ）",
   connectionErrorMessage: "サーバとの通信中にエラーが発生しました．",
 }
 

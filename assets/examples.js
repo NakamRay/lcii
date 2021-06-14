@@ -2,7 +2,6 @@ export const examples = {
   addition: [
     {
       formula: '1 + 1',
-      total: '1000000',
     },
     {
       formula: '10 + 10'
@@ -18,7 +17,7 @@ export const examples = {
     },
     {
       formula: '10000 + 10000'
-    },
+    }
   ],
   subtraction: [
     {
@@ -38,6 +37,6 @@ export const examples = {
     },
     {
       formula: '100000 - 10000'
-    },
+    }
   ]
 }

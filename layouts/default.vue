@@ -2,7 +2,6 @@
   <v-app dark>
     <v-app-bar
       app
-      clipped-left
       height="50px"
     >
       <div class="d-flex align-center">
@@ -30,33 +29,31 @@
 
       <v-spacer></v-spacer>
 
-      <v-dialog v-model="dialog" fullscreen hide-overlay transition="dialog-bottom-transition">
-        <template v-slot:activator="{ on }">
-          <v-btn outlined rounded dark v-on="on" style="border-width: medium;">Usage</v-btn>
-        </template>
-        <Usage @close-usage="closeUsage" />
-      </v-dialog>
+      <v-btn
+        rounded
+        outlined
+        style="border-width: medium;"
+        @click="$store.commit('switchUsageDialog')"
+      >
+        Usage
+      </v-btn>
+
+      <Usage />
     </v-app-bar>
     <nuxt />
   </v-app>
 </template>
 
 <script>
-import Usage from '@/components/Usage.vue'
+import Usage from '~/components/Usage.vue'
 import { app } from '~/assets/configs.js'
 
 export default {
-  data: () => ({
-    app,
-    dialog: false,
-  }),
   components: {
     Usage
   },
-  methods: {
-    closeUsage () {
-      this.dialog = false
-    }
-  }
+  data: () => ({
+    app,
+  })
 }
 </script>

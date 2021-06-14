@@ -6,24 +6,28 @@
     app
     right
     width="500"
+    class="dark-drawer"
   >
-    <v-list class="py-0">
-      <v-subheader style="height: 49px">
-        <h1>EXAMPLES</h1>
+    <template v-slot:prepend>
+      <v-toolbar height="50px">
+        <v-toolbar-title>Examples</v-toolbar-title>
+        
         <v-spacer></v-spacer>
+
         <v-btn icon @click.stop="closeDrawers()">
           <v-icon>mdi-close</v-icon>
         </v-btn>
-      </v-subheader>
-      <v-divider></v-divider>
-      <v-tabs>
+      </v-toolbar>
+    </template>
+      
+    <v-list class="py-0">
+      <v-tabs color="dark">
         <v-tab v-for="(example, key) in examples" :key="key">{{ key }}</v-tab>
         <v-tab-item v-for="(example, key) in examples" :key="key">
           <v-list-item
             style="min-height: 15px"
             v-for="(anexample, index) in example"
             :key="index"
-            v-ripple="{ class: 'red--text' }"
             @click.stop="
               setExamples(anexample);
               closeDrawers();
@@ -32,7 +36,7 @@
             <v-list-item-title>
               <v-alert
                 class="py-1 my-1"
-                color="red"
+                color="blue"
                 border="left"
                 elevation="2"
                 colored-border

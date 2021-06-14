@@ -1,19 +1,27 @@
 .drawer-text {
-  font-size: 13px;
+  font-size: 14px;
 }
-.theme--dark.v-divider {
-  border-color: #424242 !important;
-}
-.theme--dark.v-text-field--solo > .v-input__control > .v-input__slot {
+.dark-drawer {
   background-color: #1e1e1e !important;
+  border-left: thin solid #393939;
 }
-.customDark {
+.dark-card-borders {
   background-color: #1e1e1e !important;
-  border: medium solid #424242;
-}
-p.text--primary {
-  margin-bottom: 3px !important;
+  border: medium solid #393939 !important;
 }
 .theme--dark.v-alert {
-    background-color: #303030 !important;
+  background-color: #2a2a2a !important;
+  padding-bottom: 10px !important;
+}
+.v-dialog p {
+  text-indent: 1em;
+}
+code {
+  color: #ccc;
+  background-color: #111;
+  padding: 5px;
+  text-indent: 0;
+}
+.v-card__title {
+  padding: 8px 16px 8px !important;
 }

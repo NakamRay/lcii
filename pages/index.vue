@@ -12,9 +12,9 @@
       <v-row>
         <v-col cols="12" sm="10" offset-sm="1" class="pa-0">
           <v-card
-            class="mb-3 customDark"
-            style="overflow: auto"
             id="paramsCard"
+            class="mb-3 dark-card-borders"
+            style="overflow: auto"
           >
             <v-list-item three-line class="pr-2">
               <v-list-item-content class="pt-0 pb-2">
@@ -25,14 +25,6 @@
                     :cols="param.half ? 6 : 12"
                     class="py-0"
                   >
-                    <!-- <v-text-field
-                      v-if="param.visible"
-                      :label="param.display"
-                      v-model="param.value"
-                      spellcheck="false"
-                      hide-details
-                      flat
-                    ></v-text-field> -->
                     <v-text-field
                       v-if="param.visible"
                       :label="param.display"
@@ -51,10 +43,10 @@
           </v-card>
 
           <v-card
+            id="outputConsole"
             :height="consoleHeight"
             style="overflow: auto"
-            id="outputConsole"
-            class="customDark"
+            class="dark-card-borders"
           >
             <v-list class="py-3">
               <v-list-item
@@ -68,19 +60,6 @@
               </v-list-item>
             </v-list>
           </v-card>
-
-          <v-form id="inputForm" @submit.prevent>
-            <v-text-field
-              v-model="input"
-              label="Input"
-              dense
-              solo
-              hide-details
-              @keyup.enter="enter()"
-              spellcheck="false"
-              class="my-0 customDark"
-            ></v-text-field>
-          </v-form>
         </v-col>
 
         <v-col cols="1" class="text-center pl-0 d-none d-sm-flex">
@@ -118,10 +97,8 @@ export default {
 
     // for console
     messages,
-    input: "",
 
     // for layouts
-    inputFormHeight: 0,
     envHeight: 0,
     consoleHeight: 0,
   }),
@@ -156,81 +133,7 @@ export default {
       "closeDrawers",
     ]),
     ...mapActions(["clear", "showVariables"]),
-    enter() {
-      const input = this.input
-
-      if (!input) return
-
-      this.input = ""
-
-      let match
-
-      // Command
-      match = input.match(/^:([a-z]+)\s*(.*)/)
-      if (match) {
-        const cmd = match[1]
-        const args = match[2] === "" ? null : match[2].split(" ")
-
-        console.log("command  : " + cmd)
-        console.log("arguments: " + args)
-        this.command(cmd, args)
-        return
-      }
-
-      // Define a variable
-      match = input.match(/(^\$[A-Za-z]+\d*)(?:\s*=\s*)(.+[^\s])/)
-      if (match) {
-        const lhs = match[1]
-        const rhs = match[2]
-
-        this.updateVariables({ [lhs]: rhs })
-        this.addLine({
-          text: `${lhs} = ${rhs.replace("<", "&lt;").replace(">", "&gt;")}`,
-        })
-        return
-      }
-
-      // Set a param
-      match = input.match(/(^.+[^\s])(?:\s*=\s*)(.+[^\s])/)
-      if (match) {
-        const lhs = match[1]
-        const rhs = match[2]
-
-        this.addLine({ text: `> ${lhs} = ${rhs}` })
-
-        for (let param in this.params) {
-          if (this.params[param].display === lhs) {
-            this.updateParamValue({ key: param, value: rhs })
-            return;
-          }
-        }
-
-        this.addLine({ text: this.messages.invalidInputMessage })
-        return;
-      }
-
-      this.addLine({ text: this.messages.invalidInputMessage })
-    },
-    command(cmd, args) {
-      if (cmd === "calc") {
-        this.calc(args)
-        return
-      }
-      if (cmd === "show" || cmd === "s") {
-        this.showVariables(args)
-        return
-      }
-      if (cmd === "clear" || cmd === "c") {
-        this.clear()
-        return
-      }
-    },
-    calc(args) {
-      if (args) {
-        this.addLine({ text: this.messages.invalidArgumentMessage })
-        return
-      }
-
+    calc() {
       if (!this.params.formula.value) {
         this.addLine({ text: "Value of Formula is invalid." })
         return
@@ -284,8 +187,7 @@ export default {
       }
     },
     updateConsoleHeight() {
-      this.consoleHeight =
-        window.innerHeight - this.inputFormHeight - this.envHeight - 100
+      this.consoleHeight = window.innerHeight - this.envHeight - 100
     },
   },
   created() {
@@ -293,7 +195,6 @@ export default {
     this.addLine({ text: this.messages.initialMessage })
   },
   mounted() {
-    this.inputFormHeight = this.$el.querySelector("#inputForm").clientHeight
     this.envHeight = this.$el.querySelector("#paramsCard").clientHeight
     window.addEventListener("resize", this.updateConsoleHeight)
     this.updateConsoleHeight()
