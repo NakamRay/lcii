@@ -1,3 +1,5 @@
+// icons from https://materialdesignicons.com
+
 export const features = {
   clear: {
     icon: 'mdi-delete'
@@ -7,7 +9,7 @@ export const features = {
     drawer: false
   },
   examples: {
-    icon: 'mdi-lambda',
+    icon: 'mdi-alpha-e-box',
     drawer: false
   },
   variables: {

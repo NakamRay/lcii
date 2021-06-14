@@ -1,6 +1,5 @@
 import { features } from '~/assets/features.js'
 import { params, messages } from '~/assets/configs.js'
-import { helps } from '~/assets/helps.js'
 
 export const state = () => ({
   params: params,
@@ -106,25 +105,6 @@ export const actions = {
           addLine({ text: `${variable} = ${state.variables[variable].replace('<', '&lt;').replace('>', '&gt;')}` })
         }
       }
-    }
-  },
-
-  showHelps() {
-    let addLine = payload => this.commit('addLine', payload)
-
-    addLine([{ text: '<br>' }, { text: '<b>Help</b>' }])
-    for (let i = 0; i < helps.length; i++) {
-      addLine({ text: `Command: ${helps[i].cmd} ${helps[i].shortCmd ? helps[i].shortCmd : ''}` })
-
-      if (helps[i].options.length > 0) {
-        let option = ''
-        for (let j = 0; j < helps[i].options.length; j++) {
-          option += ` ${helps[i].options[j]}`
-        }
-        addLine({ text: `Option:${option}` })
-      }
-
-      addLine([{ text: `${helps[i].desc}` }, { text: '<br>' }])
     }
   },
 }

@@ -1,11 +1,11 @@
 export const app = {
-  appName: "Lambda Calculus Interactive Interpreter",
+  appName: "Sample Calculator",
   logoIcon: require('~/static/logo_icon.png'),
   logoText: require('~/static/logo_text.png'),
 }
 
 export const messages = {
-  initialMessage: ":help :h ヘルプ",
+  initialMessage: "使用方法は画面右上のUsageを参照してください．",
   invalidInputMessage: "無効な入力です．",
   argumentEmptyMessage: "引数を指定してください．（:helpでヘルプ）",
   invalidArgumentMessage: "引数が不正です．（:helpでヘルプ）",
@@ -13,13 +13,12 @@ export const messages = {
 }
 
 export const params = {
-  total: {
-    display: 'Total',
-    type: Number,
-    default: 0,
-    value: 0,
-    visible: true,
-    half: true
+  formula: {
+    display: 'Formula',
+    type: String,
+    default: null,
+    value: null,
+    visible: true
   },
   result: {
     display: 'Result',
@@ -29,18 +28,12 @@ export const params = {
     visible: true,
     half: true
   },
-  formula: {
-    display: 'Formula',
-    type: String,
-    default: null,
-    value: null,
-    visible: true
-  },
-  mode: {
-    display: 'Mode',
-    type: String,
-    default: null,
-    value: null,
-    visible: false
-  },
+  total: {
+    display: 'Total',
+    type: Number,
+    default: 0,
+    value: 0,
+    visible: true,
+    half: true
+  }
 }

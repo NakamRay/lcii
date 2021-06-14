@@ -92,16 +92,16 @@
 </template>
 
 <script>
-import axios from "axios";
-import { mapState, mapMutations, mapActions, mapGetters } from "vuex";
+import axios from "axios"
+import { mapState, mapMutations, mapActions, mapGetters } from "vuex"
 
-import { messages } from "~/assets/configs.js";
+import { messages } from "~/assets/configs.js"
 
-import HistoryDrawer from "~/components/drawers/HistoryDrawer.vue";
-import ExamplesDrawer from "~/components/drawers/ExamplesDrawer.vue";
-import VariablesDrawer from "~/components/drawers/VariablesDrawer.vue";
-import Features from "~/components/Features.vue";
-import Fab from "~/components/Fab.vue";
+import HistoryDrawer from "~/components/drawers/HistoryDrawer.vue"
+import ExamplesDrawer from "~/components/drawers/ExamplesDrawer.vue"
+import VariablesDrawer from "~/components/drawers/VariablesDrawer.vue"
+import Features from "~/components/Features.vue"
+import Fab from "~/components/Fab.vue"
 
 export default {
   components: {
@@ -114,7 +114,7 @@ export default {
   data: () => ({
     // for axios
     baseUrl: "http://localhost/",
-    apiFile: "api.php",
+    apiFile: "sample-api.php",
 
     // for console
     messages,
@@ -138,9 +138,9 @@ export default {
     // scroll the console to bottom when it changes
     console: function () {
       this.$nextTick(function () {
-        var outputWindow = this.$el.querySelector("#outputConsole");
-        outputWindow.scrollTop = outputWindow.scrollHeight;
-      });
+        var outputWindow = this.$el.querySelector("#outputConsole")
+        outputWindow.scrollTop = outputWindow.scrollHeight
+      })
     },
   },
   methods: {
@@ -155,100 +155,85 @@ export default {
       "openDrawer",
       "closeDrawers",
     ]),
-    ...mapActions(["clear", "showVariables", "showHelps"]),
+    ...mapActions(["clear", "showVariables"]),
     enter() {
-      const input = this.input;
+      const input = this.input
 
-      if (input === "") console.log(this.params);
+      if (!input) return
 
-      if (!input) return;
+      this.input = ""
 
-      this.input = "";
-
-      let match;
+      let match
 
       // Command
-      match = input.match(/^:([a-z]+)\s*(.*)/);
+      match = input.match(/^:([a-z]+)\s*(.*)/)
       if (match) {
-        const cmd = match[1];
-        const args = match[2] === "" ? null : match[2].split(" ");
+        const cmd = match[1]
+        const args = match[2] === "" ? null : match[2].split(" ")
 
-        console.log("command  : " + cmd);
-        console.log("arguments: " + args);
-        this.command(cmd, args);
-        return;
+        console.log("command  : " + cmd)
+        console.log("arguments: " + args)
+        this.command(cmd, args)
+        return
       }
 
       // Define a variable
-      match = input.match(/(^\$[A-Za-z]+\d*)(?:\s*=\s*)(.+[^\s])/);
+      match = input.match(/(^\$[A-Za-z]+\d*)(?:\s*=\s*)(.+[^\s])/)
       if (match) {
-        const lhs = match[1];
-        const rhs = match[2];
+        const lhs = match[1]
+        const rhs = match[2]
 
-        this.updateVariables({ [lhs]: rhs });
+        this.updateVariables({ [lhs]: rhs })
         this.addLine({
           text: `${lhs} = ${rhs.replace("<", "&lt;").replace(">", "&gt;")}`,
-        });
-        return;
+        })
+        return
       }
 
       // Set a param
-      match = input.match(/(^.+[^\s])(?:\s*=\s*)(.+[^\s])/);
+      match = input.match(/(^.+[^\s])(?:\s*=\s*)(.+[^\s])/)
       if (match) {
-        const lhs = match[1];
-        const rhs = match[2];
+        const lhs = match[1]
+        const rhs = match[2]
 
-        this.addLine({ text: `> ${lhs} = ${rhs}` });
+        this.addLine({ text: `> ${lhs} = ${rhs}` })
 
         for (let param in this.params) {
           if (this.params[param].display === lhs) {
-            this.updateParamValue({ key: param, value: rhs });
+            this.updateParamValue({ key: param, value: rhs })
             return;
           }
         }
 
-        this.addLine({ text: this.messages.invalidInputMessage });
+        this.addLine({ text: this.messages.invalidInputMessage })
         return;
       }
 
-      this.addLine({ text: this.messages.invalidInputMessage });
+      this.addLine({ text: this.messages.invalidInputMessage })
     },
     command(cmd, args) {
       if (cmd === "calc") {
-        this.calc(args);
-        return;
+        this.calc(args)
+        return
       }
       if (cmd === "show" || cmd === "s") {
-        this.showVariables(args);
-        return;
+        this.showVariables(args)
+        return
       }
       if (cmd === "clear" || cmd === "c") {
-        this.clear();
-        return;
-      }
-      if (cmd === "quit" || cmd === "q") {
-        this.addLine({ text: "> quit" });
-        this.init();
-        this.addLine([
-          { text: "<br>" },
-          { text: this.messages.initialMessage },
-        ]);
-        return;
-      }
-      if (cmd === "help" || cmd === "h") {
-        this.showHelps();
-        return;
+        this.clear()
+        return
       }
     },
     calc(args) {
       if (args) {
-        this.addLine({ text: this.messages.invalidArgumentMessage });
-        return;
+        this.addLine({ text: this.messages.invalidArgumentMessage })
+        return
       }
 
       if (!this.params.formula.value) {
-        this.addLine({ text: "Value of Formula is invalid." });
-        return;
+        this.addLine({ text: "Value of Formula is invalid." })
+        return
       }
 
       if (this.hasVariable(this.params.formula.value)) {
@@ -258,67 +243,65 @@ export default {
         });
       }
 
-      this.updateParamValue({ key: "mode", value: "calc" });
-
-      this.sendReq();
+      this.sendReq()
     },
     sendReq() {
-      let request = new URLSearchParams();
+      let request = new URLSearchParams()
 
       for (var param in this.params) {
-        request.append(param, this.params[param].value);
-        console.log(param + ": " + this.params[param].value);
+        request.append(param, this.params[param].value)
+        console.log(param + ": " + this.params[param].value)
       }
 
-      return;
-
-      var vm = this;
+      var vm = this
 
       axios
         .post(this.baseUrl + this.apiFile, request)
         .then(function (response) {
-          var opt = response.data;
-          console.log(opt);
+          var result = response.data
+
+          vm.updateParamValue({ key: "total", value: vm.params.total.value + parseInt(result) })
+          vm.updateParamValue({ key: "result", value: result })
 
           vm.addLine([
-            { text: opt },
             { text: "<br>" },
-            { text: vm.messages.initialMessage },
-          ]);
+            { text: `> ${vm.params.formula.value}` },
+            { text: result },
+          ])
         })
         .catch(function (err) {
-          vm.addLine({ text: vm.messages.connectionErrorMessage });
-          console.error(err);
-        });
+          vm.addLine({ text: vm.messages.connectionErrorMessage })
+          console.error(err)
+        })
     },
     drawerEvent(key) {
       if (key === "clear") {
-        this.clear();
+        this.clear()
       } else if (this.features[key].hasOwnProperty("drawer")) {
-        this.openDrawer(key);
+        this.openDrawer(key)
       } else {
-        this.calc();
+        this.calc()
       }
     },
     updateConsoleHeight() {
       this.consoleHeight =
-        window.innerHeight - this.inputFormHeight - this.envHeight - 100;
+        window.innerHeight - this.inputFormHeight - this.envHeight - 100
     },
   },
   created() {
-    this.init();
-    this.addLine({ text: this.messages.initialMessage });
+    this.init()
+    this.addLine({ text: this.messages.initialMessage })
   },
   mounted() {
-    this.inputFormHeight = this.$el.querySelector("#inputForm").clientHeight;
-    this.envHeight = this.$el.querySelector("#paramsCard").clientHeight;
-    window.addEventListener("resize", this.updateConsoleHeight);
-    this.updateConsoleHeight();
+    this.inputFormHeight = this.$el.querySelector("#inputForm").clientHeight
+    this.envHeight = this.$el.querySelector("#paramsCard").clientHeight
+    window.addEventListener("resize", this.updateConsoleHeight)
+    this.updateConsoleHeight()
   },
   destroyed() {
-    window.removeEventListener("resize", this.updateConsoleHeight);
+    window.removeEventListener("resize", this.updateConsoleHeight)
   },
-};
+}
 </script>
 
 <style src="~/assets/styles.css"/>

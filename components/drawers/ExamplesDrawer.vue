@@ -25,7 +25,7 @@
             :key="index"
             v-ripple="{ class: 'red--text' }"
             @click.stop="
-              updateParamValue({ key: 'formula', value: anexample.formula });
+              setExamples(anexample);
               closeDrawers();
             "
           >
@@ -37,8 +37,11 @@
                 elevation="2"
                 colored-border
               >
-                <div class="overline">Formula</div>
-                <span class="drawer-text">{{ anexample.formula }}</span>
+                <div v-for="(param, key) in anexample" :key="key">
+                  <div class="overline">{{ key }}</div>
+                  <span class="drawer-text">{{ param }}</span>
+                  <hr>
+                </div>
               </v-alert>
             </v-list-item-title>
           </v-list-item>
@@ -49,9 +52,9 @@
 </template>
 
 <script>
-import { mapMutations } from "vuex";
+import { mapMutations } from "vuex"
 
-import { examples } from "~/assets/examples.js";
+import { examples } from "~/assets/examples.js"
 
 export default {
   data: () => ({
@@ -61,17 +64,24 @@ export default {
   computed: {
     drawer: {
       get() {
-        return this.$store.state.features[this.key].drawer;
+        return this.$store.state.features[this.key].drawer
       },
       set(value) {
         if (value) {
-          this.openDrawer(this.key);
+          this.openDrawer(this.key)
         } else {
-          this.closeDrawers();
+          this.closeDrawers()
         }
       },
     },
   },
-  methods: mapMutations(["updateParamValue", "openDrawer", "closeDrawers"]),
-};
+  methods: {
+    ...mapMutations(["updateParamValue", "openDrawer", "closeDrawers"]),
+    setExamples(anexample) {
+      Object.keys(anexample).forEach(key => {
+        this.updateParamValue({ key: key, value: anexample[key] });
+      })
+    }
+  }
+}
 </script>

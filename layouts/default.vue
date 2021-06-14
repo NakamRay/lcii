@@ -7,6 +7,7 @@
     >
       <div class="d-flex align-center">
         <v-img
+          v-if="app.logoIcon"
           alt="Logo Icon"
           class="shrink mx-2"
           contain
@@ -16,13 +17,15 @@
         />
 
         <v-img
+          v-if="app.logoText"
           alt="Logo Text"
           class="shrink hidden-sm-and-down"
           contain
           :src="app.logoText"
-          height="30"
-          width="80"
+          height="40"
+          width="200"
         />
+        <span v-else>{{ app.appName }}</span>
       </div>
 
       <v-spacer></v-spacer>
